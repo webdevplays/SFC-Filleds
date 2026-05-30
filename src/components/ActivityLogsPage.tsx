@@ -70,8 +70,8 @@ export default function ActivityLogsPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-clinic-blue-600 border-t-transparent" />
           </div>
         ) : (
-          <div className="border border-slate-100 dark:border-slate-800/80 rounded-2xl overflow-hidden">
-            <table className="w-full text-left text-xs bg-white dark:bg-slate-900">
+          <div className="border border-slate-100 dark:border-slate-800/80 rounded-2xl overflow-hidden overflow-x-auto">
+            <table className="w-full text-left text-xs bg-white dark:bg-slate-900 min-w-[600px]">
               <thead className="bg-slate-50 dark:bg-slate-950/45 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                 <tr>
                   <th className="px-6 py-4">Track ID</th>

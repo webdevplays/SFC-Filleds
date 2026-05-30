@@ -24,6 +24,20 @@ export default function BarangaysPage({ currentAdminId }: BarangaysPageProps) {
   const [editingItem, setEditingItem] = useState<Barangay | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Custom center-screen deletion confirmation modal state
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    criticalWarning?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {}
+  });
+
   // Form fields
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
@@ -115,18 +129,23 @@ export default function BarangaysPage({ currentAdminId }: BarangaysPageProps) {
     }
   };
 
-  const handleDelete = async (item: Barangay) => {
-    if (!confirm(`Are you sure you want to delete the approved Barangay "${item.Name}"? Any employee profiles already registered under this Barangay address will remain, but new employee registrations will no longer see this option in the address dropdown.`)) {
-      return;
-    }
-    try {
-      const res = await api.deleteBarangay(item.BarangayID, currentAdminId);
-      if (res.success) {
-        loadData();
+  const handleDelete = (item: Barangay) => {
+    setDeleteDialog({
+      isOpen: true,
+      title: 'Delete Approved Barangay Address',
+      description: `Are you sure you want to delete the approved Barangay "${item.Name}"? Any employee profiles already registered under this Barangay address will remain, but new employee registrations will no longer see this option in the address dropdown.`,
+      criticalWarning: 'This area will be permanently removed from selection templates.',
+      onConfirm: async () => {
+        try {
+          const res = await api.deleteBarangay(item.BarangayID, currentAdminId);
+          if (res.success) {
+            loadData();
+          }
+        } catch (e: any) {
+          alert(e.message || 'Error deleting Barangay sector.');
+        }
       }
-    } catch (e: any) {
-      alert(e.message || 'Error deleting Barangay sector.');
-    }
+    });
   };
 
   const filteredItems = barangays.filter(
@@ -336,6 +355,49 @@ export default function BarangaysPage({ currentAdminId }: BarangaysPageProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Center-screen deletion confirmation modal */}
+      {deleteDialog.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print animate-in fade-in duration-250">
+          <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="p-6 text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-950/40 text-red-650 mb-4">
+                <AlertTriangle className="h-6 w-6 text-red-650" />
+              </div>
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 font-heading mb-2">
+                {deleteDialog.title}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
+                {deleteDialog.description}
+              </p>
+              {deleteDialog.criticalWarning && (
+                <div className="p-2.5 bg-red-50 dark:bg-red-955/20 text-[10px] font-bold text-red-700 dark:text-red-300 border border-red-100 dark:border-red-900/50 rounded-xl mb-5 leading-normal">
+                  ⚠️ {deleteDialog.criticalWarning}
+                </div>
+              )}
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteDialog(prev => ({ ...prev, isOpen: false }))}
+                  className="flex-1 py-2 px-4 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs border border-slate-150 dark:border-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    deleteDialog.onConfirm();
+                    setDeleteDialog(prev => ({ ...prev, isOpen: false }));
+                  }}
+                  className="flex-1 py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-1 shadow-md shadow-red-500/10 cursor-pointer animate-pulse"
+                >
+                  Confirm Delete
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

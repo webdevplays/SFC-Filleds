@@ -30,6 +30,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Notifications State
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -135,15 +136,26 @@ export default function App() {
         onLogout={handleLogout}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
+        isOpenMobile={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* Main Workspace Frame */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Workspace Portal Header */}
-        <header className="h-16 flex-shrink-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 flex items-center justify-between z-20 no-print transition-colors duration-300">
+        <header className="h-16 flex-shrink-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-8 flex items-center justify-between z-20 no-print transition-colors duration-300">
           <div className="flex items-center space-x-2.5">
-            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">WORKSPACE LEVEL</span>
-            <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+            {/* Hamburger Button for mobile */}
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="md:hidden p-1.5 text-slate-500 hover:text-slate-705 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+              title="Open Navigation"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+
+            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono hidden xs:inline-block">WORKSPACE LEVEL</span>
+            <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700 hidden xs:inline-block" />
             <span className="text-xs font-bold text-clinic-blue-600 capitalize bg-clinic-blue-50 dark:bg-slate-800 px-2.5 py-0.5 rounded">
               {activeTab}
             </span>
