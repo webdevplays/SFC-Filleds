@@ -12,7 +12,8 @@ import {
   User,
   Shield,
   BookOpen,
-  MapPin
+  MapPin,
+  Coins
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -58,6 +59,12 @@ export default function Sidebar({
       id: 'records',
       label: isAdmin ? 'All Survey Records' : 'Group Survey Data',
       icon: FileSpreadsheet,
+      allowed: ['Admin', 'Leader', 'Co-Leader'],
+    },
+    {
+      id: 'paid-records',
+      label: isAdmin ? 'Paid Surveys Registry' : 'Group Paid Surveys',
+      icon: Coins,
       allowed: ['Admin', 'Leader', 'Co-Leader'],
     },
     // Admin Only tabs

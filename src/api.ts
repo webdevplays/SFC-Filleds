@@ -351,9 +351,10 @@ const simulatedApi = {
     const employees = getLocalItem<Employee>(STORAGE_KEYS.EMPLOYEES, DEFAULT_EMPLOYEES);
     const idx = employees.findIndex(e => e.EmployeeID === id);
     if (idx !== -1) {
-      employees[idx].Status = 'Revoked';
+      const deletedName = employees[idx].FullName;
+      employees.splice(idx, 1);
       setLocalItem(STORAGE_KEYS.EMPLOYEES, employees);
-      addLocalLog(modifierId, `Soft deleted (Profile Revoked) Employee ID: ${id}`);
+      addLocalLog(modifierId, `Permanently deleted employee: ${deletedName} (ID: ${id})`);
       return { success: true };
     }
     throw new Error('Employee profile not found.');
@@ -506,6 +507,32 @@ const simulatedApi = {
       return { success: true };
     }
     throw new Error('Survey record not found.');
+  },
+
+  payRecords: async (fromDate: string, toDate: string, adminId: string) => {
+    const records = getLocalItem<ClinicRecord>(STORAGE_KEYS.RECORDS, DEFAULT_RECORDS);
+    let countUpdated = 0;
+    let totalPayoutPaid = 0;
+    const updated = records.map(r => {
+      const recordDateStr = r.CreatedDate.split('T')[0];
+      if (recordDateStr >= fromDate && recordDateStr <= toDate && !r.IsPaid) {
+        countUpdated++;
+        totalPayoutPaid += r.TotalPayout;
+        return {
+          ...r,
+          IsPaid: true,
+          PaidDate: new Date().toISOString()
+        };
+      }
+      return r;
+    });
+
+    if (countUpdated > 0) {
+      setLocalItem(STORAGE_KEYS.RECORDS, updated);
+      addLocalLog(adminId, `Processed payment reconciliation for ${countUpdated} surveys between ${fromDate} and ${toDate}. Total Paid: PHP ${totalPayoutPaid}`);
+      addLocalNotification('admin', adminId, 'Payment Reconciliation Completed', `Reconciled payments for ${countUpdated} surveys from ${fromDate} to ${toDate}. Total paid value: PHP ${totalPayoutPaid}`, 'success');
+    }
+    return { success: true, count: countUpdated, totalPaid: totalPayoutPaid };
   },
 
   getAnalytics: async () => {
@@ -831,6 +858,12 @@ export const api = {
     withFallback(
       () => apiRequest(`/api/records/${id}`, 'DELETE', undefined, modifierId),
       () => simulatedApi.deleteRecord(id, modifierId)
+    ),
+
+  payRecords: (fromDate: string, toDate: string, adminId: string) => 
+    withFallback(
+      () => apiRequest('/api/records/pay', 'POST', { fromDate, toDate }, adminId),
+      () => simulatedApi.payRecords(fromDate, toDate, adminId)
     ),
 
   // Admin Analytics

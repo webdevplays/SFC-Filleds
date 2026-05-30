@@ -259,7 +259,7 @@ async function ensureSheetsAndHeaders() {
     const sheetsToCreate = [
       { name: 'Employees', headers: ['EmployeeID', 'FullName', 'Username', 'PINCode', 'Position', 'Status', 'ContactNumber', 'CreatedDate'] },
       { name: 'Groups', headers: ['GroupID', 'GroupName', 'GroupCode', 'LeaderID', 'CoLeaderIDs', 'PayoutRate', 'StartDate', 'Status'] },
-      { name: 'Records', headers: ['RecordID', 'GroupID', 'LeaderID', 'HouseNumber', 'PersonCount', 'PayoutRate', 'TotalPayout', 'Remarks', 'CreatedDate'] },
+      { name: 'Records', headers: ['RecordID', 'GroupID', 'LeaderID', 'HouseNumber', 'PersonCount', 'PayoutRate', 'TotalPayout', 'Remarks', 'CreatedDate', 'IsPaid', 'PaidDate'] },
       { name: 'ActivityLogs', headers: ['LogID', 'UserID', 'Activity', 'DateTime', 'IPAddress'] },
       { name: 'Notifications', headers: ['NotificationID', 'TargetUserID', 'SourceUserID', 'Title', 'Message', 'Type', 'CreatedDate', 'IsRead'] }
     ];
@@ -337,12 +337,24 @@ async function syncGroupsToSheets(groups: Group[], sheets: any, spreadsheetId: s
 
 async function syncRecordsToSheets(records: ClinicRecord[], sheets: any, spreadsheetId: string) {
   const values = [
-    ['RecordID', 'GroupID', 'LeaderID', 'HouseNumber', 'PersonCount', 'PayoutRate', 'TotalPayout', 'Remarks', 'CreatedDate'],
-    ...records.map(r => [r.RecordID, r.GroupID, r.LeaderID, r.HouseNumber, r.PersonCount.toString(), r.PayoutRate.toString(), r.TotalPayout.toString(), r.Remarks, r.CreatedDate])
+    ['RecordID', 'GroupID', 'LeaderID', 'HouseNumber', 'PersonCount', 'PayoutRate', 'TotalPayout', 'Remarks', 'CreatedDate', 'IsPaid', 'PaidDate'],
+    ...records.map(r => [
+      r.RecordID,
+      r.GroupID,
+      r.LeaderID,
+      r.HouseNumber,
+      r.PersonCount.toString(),
+      r.PayoutRate.toString(),
+      r.TotalPayout.toString(),
+      r.Remarks,
+      r.CreatedDate,
+      r.IsPaid ? 'TRUE' : 'FALSE',
+      r.PaidDate || ''
+    ])
   ];
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: 'Records!A1:I10000',
+    range: 'Records!A1:K10000',
     valueInputOption: 'RAW',
     requestBody: { values }
   });
@@ -477,7 +489,7 @@ export async function getRecords(): Promise<ClinicRecord[]> {
   }
   const { sheets, spreadsheetId } = client;
   try {
-    const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'Records!A2:I10000' });
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'Records!A2:K10000' });
     const rows = response.data.values || [];
     const records: ClinicRecord[] = rows.map(r => ({
       RecordID: r[0] || '',
@@ -488,7 +500,9 @@ export async function getRecords(): Promise<ClinicRecord[]> {
       PayoutRate: parseFloat(r[5] || '0'),
       TotalPayout: parseFloat(r[6] || '0'),
       Remarks: r[7] || '',
-      CreatedDate: r[8] || ''
+      CreatedDate: r[8] || '',
+      IsPaid: r[9] === 'TRUE',
+      PaidDate: r[10] || ''
     })).filter(rec => rec.RecordID);
 
     if (records.length > 0) {

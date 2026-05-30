@@ -174,13 +174,13 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
     }
   };
 
-  // Soft Delete (Revoke Profile Access)
-  const handleRevokeProfile = (emp: Employee) => {
+  // Permanent Delete Employee Profile
+  const handleDeleteEmployee = (emp: Employee) => {
     setDeleteDialog({
       isOpen: true,
-      title: 'Revoke Profile Access',
-      description: `Are you absolutely sure you want to revoke clinic systems access for ${emp.FullName}? This will prevent them from logging in entirely.`,
-      criticalWarning: 'This employee will be soft deleted and lose all system permissions.',
+      title: 'Permanently Delete Employee Account',
+      description: `Are you absolutely sure you want to permanently delete the profile for ${emp.FullName}? This action will completely erase their account from Saint Francis Clinic Systems.`,
+      criticalWarning: 'This action is irreversible! All access permissions and registration records of this employee will be permanently removed.',
       onConfirm: async () => {
         try {
           const res = await api.deleteEmployee(emp.EmployeeID, currentAdminId);
@@ -313,10 +313,10 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
                               <Edit2 className="h-3.5 w-3.5" />
                             </button>
 
-                            {/* Soft Delete / Revoke */}
+                            {/* Permanent Hard Delete */}
                             <button
-                              onClick={() => handleRevokeProfile(emp)}
-                              title="Revoke System Access (Soft Delete)"
+                              onClick={() => handleDeleteEmployee(emp)}
+                              title="Permanently Delete Employee Profile"
                               className="p-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-lg transition-all cursor-pointer"
                             >
                               <Trash2 className="h-3.5 w-3.5" />

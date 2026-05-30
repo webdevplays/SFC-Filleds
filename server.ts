@@ -242,7 +242,7 @@ async function startServer() {
     }
   });
 
-  // Delete employee (hard delete if requested, or we use standard Soft delete as status='Revoked')
+  // Delete employee (permanently delete)
   app.delete('/api/employees/:id', async (req, res) => {
     try {
       const { id } = req.params;
@@ -255,15 +255,15 @@ async function startServer() {
         return res.status(404).json({ success: false, message: 'Employee not found.' });
       }
 
-      // Soft delete: status = 'Revoked'
       const employee = employees[idx];
-      employee.Status = 'Revoked';
+      const deletedName = employee.FullName;
+      employees.splice(idx, 1);
       await saveEmployees(employees);
 
-      await addLog(modifier, `Soft deleted (Profile Revoked) Employee ID: ${id}`);
-      await addNotification(modifier, 'Account Revoked', `Employee ${employee.FullName} status set to Revoked.`, 'warning');
+      await addLog(modifier, `Permanently deleted employee: ${deletedName} (ID: ${id})`);
+      await addNotification(modifier, 'Employee Deleted Permanently', `Employee profile ${deletedName} was permanently deleted by Admin.`, 'error');
 
-      res.json({ success: true, message: 'Employee profile revoked.' });
+      res.json({ success: true, message: 'Employee profile permanently deleted.' });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
     }
@@ -818,6 +818,46 @@ async function startServer() {
 
       await addLog(modifier, `Deleted survey record: ${id} (House Group #${recordToDelete.HouseNumber})`);
       res.json({ success: true, message: 'Survey record deleted.' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Bulk payout processing for date ranges
+  app.post('/api/records/pay', async (req, res) => {
+    try {
+      const { fromDate, toDate } = req.body;
+      const adminId = req.headers['x-user-id'] as string || 'admin';
+      
+      if (!fromDate || !toDate) {
+        return res.status(400).json({ success: false, message: 'Please provide both From Date and To Date.' });
+      }
+
+      const records = await getRecords();
+      let countUpdated = 0;
+      let totalPayoutPaid = 0;
+
+      const updatedRecords = records.map(r => {
+        const recordDateStr = r.CreatedDate.split('T')[0];
+        if (recordDateStr >= fromDate && recordDateStr <= toDate && !r.IsPaid) {
+          countUpdated++;
+          totalPayoutPaid += r.TotalPayout;
+          return {
+            ...r,
+            IsPaid: true,
+            PaidDate: new Date().toISOString()
+          };
+        }
+        return r;
+      });
+
+      if (countUpdated > 0) {
+        await saveRecords(updatedRecords);
+        await addLog(adminId, `Processed payment reconciliation for ${countUpdated} surveys between ${fromDate} and ${toDate}. Total Paid: PHP ${totalPayoutPaid}`);
+        await addNotification(adminId, 'Payment Reconciliation Completed', `Reconciled payments for ${countUpdated} surveys from ${fromDate} to ${toDate}. Total paid value: PHP ${totalPayoutPaid}`, 'success');
+      }
+
+      res.json({ success: true, count: countUpdated, totalPaid: totalPayoutPaid });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
     }

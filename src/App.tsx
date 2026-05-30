@@ -259,7 +259,10 @@ export default function App() {
                 user.Position === 'Admin' ? <AdminDashboard /> : <EmployeeDashboard user={user} />
               )}
               {activeTab === 'records' && (
-                <RecordsPage user={user} />
+                <RecordsPage user={user} isPaidView={false} />
+              )}
+              {activeTab === 'paid-records' && (
+                <RecordsPage user={user} isPaidView={true} />
               )}
               {activeTab === 'employees' && user.Position === 'Admin' && (
                 <EmployeesPage currentAdminId={user.EmployeeID} />

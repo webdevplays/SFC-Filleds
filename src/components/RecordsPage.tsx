@@ -16,16 +16,20 @@ import {
   UserCheck,
   RefreshCw,
   X,
-  FileText
+  FileText,
+  Coins,
+  CheckCircle
 } from 'lucide-react';
 
 interface RecordsPageProps {
   user: Omit<Employee, 'PINCode'>;
+  isPaidView?: boolean;
 }
 
-export default function RecordsPage({ user }: RecordsPageProps) {
+export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
   const isAdmin = user.Position === 'Admin';
   const isLeader = user.Position === 'Leader';
+  const isPaid = isPaidView ?? false;
 
   const [records, setRecords] = useState<ClinicRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -38,6 +42,12 @@ export default function RecordsPage({ user }: RecordsPageProps) {
   const [filterEmployee, setFilterEmployee] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+
+  // Bulk Payment States
+  const [payFromDate, setPayFromDate] = useState('');
+  const [payToDate, setPayToDate] = useState('');
+  const [isPaying, setIsPaying] = useState(false);
+  const [paymentSuccessMsg, setPaymentSuccessMsg] = useState<string | null>(null);
 
   // Editing state for Leader
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -58,7 +68,10 @@ export default function RecordsPage({ user }: RecordsPageProps) {
       if (isAdmin) {
         setEmployees(allEmps);
         setGroups(allGroups);
-        setRecords(allRecords);
+        const matchesPaidTarget = allRecords.filter((r: ClinicRecord) => {
+          return isPaid ? !!r.IsPaid : !r.IsPaid;
+        });
+        setRecords(matchesPaidTarget);
       } else {
         // Find user assigned groups (either as leader or co-leader)
         const myGroups = allGroups.filter((g: Group) => 
@@ -67,9 +80,9 @@ export default function RecordsPage({ user }: RecordsPageProps) {
         setGroups(myGroups);
         const myGroupIds = myGroups.map((g: Group) => g.GroupID);
         
-        // Filter records strictly to assigned groups
+        // Filter records strictly to assigned groups and the designated payment view (Active vs. Paid)
         const filtered = allRecords.filter((r: ClinicRecord) => 
-          myGroupIds.includes(r.GroupID)
+          myGroupIds.includes(r.GroupID) && (isPaid ? !!r.IsPaid : !r.IsPaid)
         );
         setRecords(filtered);
 
@@ -140,6 +153,36 @@ export default function RecordsPage({ user }: RecordsPageProps) {
     }
   };
 
+  const handleProcessPayment = async () => {
+    if (!payFromDate || !payToDate) return;
+    
+    const confirmMsg = `Are you sure you want to process settlement ("Payed") for all survey records covering the dates ${payFromDate} to ${payToDate}?\n\nThis will permanently migrate them to the Paid Registry ledger and clear them from active registries.`;
+    if (!confirm(confirmMsg)) return;
+
+    setIsPaying(true);
+    setPaymentSuccessMsg(null);
+    try {
+      const res = await api.payRecords(payFromDate, payToDate, user.EmployeeID);
+      if (res.success) {
+        if (res.count > 0) {
+          setPaymentSuccessMsg(`Success! Settled ${res.count} surveys between ${payFromDate} and ${payToDate}. Total payout value: ₱${res.totalPaid.toLocaleString()}.`);
+        } else {
+          setPaymentSuccessMsg(`No unpaid records found matching the target dates ${payFromDate} to ${payToDate}.`);
+        }
+        setPayFromDate('');
+        setPayToDate('');
+        loadData();
+      } else {
+        alert(res.message || 'Payment reconciliation failed.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'An error occurred during payment processing.');
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
   // Filter lists based on inputs
   const filteredRecords = records.filter(rec => {
     // Group mapping
@@ -174,7 +217,7 @@ export default function RecordsPage({ user }: RecordsPageProps) {
   // Export functions
   const handleExportCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "RecordID,GroupID,GroupCode,LeaderName,HouseNumber,PersonCount,PayoutRate,TotalPayout,CreatedDate,Remarks\n";
+    csvContent += "RecordID,GroupID,GroupCode,LeaderName,HouseNumber,PersonCount,PayoutRate,TotalPayout,CreatedDate,Remarks,IsPaid,PaidDate\n";
     
     filteredRecords.forEach(rec => {
       const g = groups.find(grp => grp.GroupID === rec.GroupID);
@@ -182,14 +225,17 @@ export default function RecordsPage({ user }: RecordsPageProps) {
       const leader = employees.find(e => e.EmployeeID === rec.LeaderID);
       const leaderName = leader ? leader.FullName : 'Unknown';
       const cleanRemarks = rec.Remarks.replace(/"/g, '""');
+      const isPaidFlag = rec.IsPaid ? 'TRUE' : 'FALSE';
+      const paidDateVal = rec.PaidDate || '';
 
-      csvContent += `"${rec.RecordID}","${rec.GroupID}","${groupCode}","${leaderName}","${rec.HouseNumber}",${rec.PersonCount},${rec.PayoutRate},${rec.TotalPayout},"${rec.CreatedDate}","${cleanRemarks}"\n`;
+      csvContent += `"${rec.RecordID}","${rec.GroupID}","${groupCode}","${leaderName}","${rec.HouseNumber}",${rec.PersonCount},${rec.PayoutRate},${rec.TotalPayout},"${rec.CreatedDate}","${cleanRemarks}","${isPaidFlag}","${paidDateVal}"\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Saint_Francis_Survey_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    const prefix = isPaid ? 'Paid_Ledger' : 'Active_Registry';
+    link.setAttribute("download", `Saint_Francis_${prefix}_Report_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -207,18 +253,36 @@ export default function RecordsPage({ user }: RecordsPageProps) {
   const getGroupName = (id: string) => {
     const g = groups.find(grp => grp.GroupID === id);
     return g ? `${g.GroupName} (${g.GroupCode})` : 'Unknown Group';
-  };
-
-  return (
+  };  return (
     <div className="space-y-6">
+      {/* Top Notification Banner */}
+      {paymentSuccessMsg && (
+        <div className="bg-emerald-600 dark:bg-emerald-900 border border-emerald-500 text-white rounded-2xl p-4 flex items-start justify-between shadow-xl text-xs leading-relaxed animate-in slide-in-from-top-4 duration-305 no-print">
+          <div className="flex items-center space-x-2.5">
+            <CheckCircle className="h-5 w-5 shrink-0 text-emerald-200 animate-bounce" />
+            <div>
+              <p className="font-bold tracking-wide uppercase text-[10px] text-emerald-200">Reconciliation Action</p>
+              <p className="font-semibold">{paymentSuccessMsg}</p>
+            </div>
+          </div>
+          <button onClick={() => setPaymentSuccessMsg(null)} className="hover:bg-emerald-700/50 p-1 rounded-lg cursor-pointer">
+            <X className="h-4.5 w-4.5" />
+          </button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
         <div>
-          <h1 className="text-2xl font-bold font-heading text-slate-800 dark:text-slate-100">
-            {isAdmin ? 'All Field Survey Registry' : 'My Group Field Survey Registry'}
+          <h1 className="text-2xl font-bold font-heading text-slate-800 dark:text-slate-100 uppercase tracking-tight">
+            {isPaid 
+              ? (isAdmin ? 'Paid Surveys Registry' : 'Group Paid Surveys') 
+              : (isAdmin ? 'All Field Survey Registry' : 'Active Group Surveys')}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Browse survey entry records, search by house index ranges, and generate structured reports.
+            {isPaid 
+              ? 'Archived logbook of fully processed clinic survey submissions and settlements.' 
+              : 'Browse active survey entry records, search by house index ranges, and reconcile payout rates.'}
           </p>
         </div>
 
@@ -229,7 +293,7 @@ export default function RecordsPage({ user }: RecordsPageProps) {
             className="px-3.5 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 border border-slate-150 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all shadow-sm cursor-pointer"
           >
             <Download className="h-4 w-4" />
-            <span>Export CSV / Excel</span>
+            <span>Export CSV</span>
           </button>
           
           <button
@@ -237,10 +301,58 @@ export default function RecordsPage({ user }: RecordsPageProps) {
             className="px-3.5 py-2 bg-clinic-blue-600 hover:bg-clinic-blue-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all shadow-md shadow-clinic-blue-500/15 cursor-pointer"
           >
             <Printer className="h-4 w-4" />
-            <span>Print Report PDF</span>
+            <span>Print Sheet PDF</span>
           </button>
         </div>
       </div>
+
+      {/* Admin Payout Tool (Active View Only) */}
+      {isAdmin && !isPaid && (
+        <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 dark:from-emerald-950/30 dark:to-teal-950/30 border border-emerald-500/20 dark:border-emerald-800 p-5 rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-xs no-print">
+          <div className="space-y-1">
+            <h4 className="text-sm font-bold text-emerald-850 dark:text-emerald-450 flex items-center gap-1.5 font-heading uppercase tracking-wide">
+              <Coins className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400 animate-pulse" />
+              Process Payout Settlement
+            </h4>
+            <p className="text-[11px] text-emerald-700/90 dark:text-emerald-400/80">
+              Select a calendar range. Click the "**Payed**" button to migrate active clinic surveys to the **Paid Registry** ledger.
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap items-end gap-3 font-mono">
+            <div>
+              <label className="block text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1.5">From Date</label>
+              <input
+                type="date"
+                value={payFromDate}
+                onChange={(e) => setPayFromDate(e.target.value)}
+                className="px-3 py-2 bg-white dark:bg-slate-950 border border-slate-205 dark:border-slate-805 text-xs text-slate-800 dark:text-white rounded-xl"
+              />
+            </div>
+            <div>
+              <label className="block text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1.5">To Date</label>
+              <input
+                type="date"
+                value={payToDate}
+                onChange={(e) => setPayToDate(e.target.value)}
+                className="px-3 py-2 bg-white dark:bg-slate-950 border border-slate-205 dark:border-slate-805 text-xs text-slate-800 dark:text-white rounded-xl"
+              />
+            </div>
+            <button
+              onClick={handleProcessPayment}
+              disabled={isPaying || !payFromDate || !payToDate}
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-45 disabled:pointer-events-none text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-500/10 cursor-pointer flex items-center gap-1.5 uppercase tracking-wider"
+            >
+              {isPaying ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CheckCircle className="h-3.5 w-3.5" />
+              )}
+              <span>Payed</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filter and Search Panel */}
       <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-2xl shadow-sm space-y-4 no-print">
@@ -249,10 +361,10 @@ export default function RecordsPage({ user }: RecordsPageProps) {
           <Search className="absolute left-3.5 top-3 text-slate-400 h-4.5 w-4.5" />
           <input
             type="text"
-            placeholder="Search surveys by house count, Barangay group code, or submission date (YYYY-MM-DD)..."
+            placeholder={isPaid ? "Search paid record logs by group code, barangay name, or date..." : "Search active surveys by house count, group leader, or date (YYYY-MM-DD)..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-205 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
+            className="w-full pl-11 pr-4 py-2 bg-slate-50 dark:bg-slate-955 border border-slate-205 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
           />
         </div>
 
@@ -339,7 +451,7 @@ export default function RecordsPage({ user }: RecordsPageProps) {
                   <th className="px-6 py-4 text-right uppercase">Computed Payout</th>
                   <th className="px-6 py-4 uppercase">Assigned Staff</th>
                   <th className="px-6 py-4 no-print">Created Date</th>
-                  <th className="px-6 py-4 no-print text-right">Actions</th>
+                  <th className="px-6 py-4 no-print text-right uppercase">{isPaid ? 'Settlement Status' : 'Actions'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -359,35 +471,41 @@ export default function RecordsPage({ user }: RecordsPageProps) {
                       </td>
                       <td className="px-6 py-4 text-center font-mono font-bold text-slate-700 dark:text-slate-350">{rec.HouseNumber}</td>
                       <td className="px-6 py-4 text-center font-bold text-slate-805 dark:text-white">{rec.PersonCount} person(s)</td>
-                      <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-450">₱{rec.PayoutRate}</td>
+                      <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-455">₱{rec.PayoutRate}</td>
                       <td className="px-6 py-4 text-right font-black text-clinic-green-600">₱{rec.TotalPayout.toLocaleString()}</td>
                       <td className="px-6 py-4 font-medium text-slate-600 dark:text-slate-400">{getLeaderName(rec.LeaderID)}</td>
                       <td className="px-6 py-4 text-slate-500 dark:text-slate-450 font-mono text-[10px] no-print">
                         {new Date(rec.CreatedDate).toISOString().replace('T', ' ').slice(0, 19)}
                       </td>
                       <td className="px-6 py-4 no-print text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          {/* Leader can update/delete their OWN records. Admins also can edit any block */}
-                          {(isAdmin || (isLeader && isOwnRecord)) && (
-                            <>
-                              <button
-                                onClick={() => handleOpenEdit(rec)}
-                                className="p-1 text-clinic-blue-600 hover:bg-clinic-blue-50 dark:hover:bg-slate-800 rounded transition-all cursor-pointer"
-                                title="Edit Record values"
-                              >
-                                <Edit className="h-3.5 w-3.5" />
-                              </button>
-                              
-                              <button
-                                onClick={() => handleDeleteRecord(rec.RecordID)}
-                                className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-slate-850 rounded transition-all cursor-pointer"
-                                title="Delete Record permanently"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </>
-                          )}
-                        </div>
+                        {isPaid ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40">
+                            PAYED ({new Date(rec.PaidDate || rec.CreatedDate).toLocaleDateString()})
+                          </span>
+                        ) : (
+                          <div className="flex items-center justify-end space-x-2">
+                            {/* Leader can update/delete their OWN records. Admins also can edit any block */}
+                            {(isAdmin || (isLeader && isOwnRecord)) && (
+                              <>
+                                <button
+                                  onClick={() => handleOpenEdit(rec)}
+                                  className="p-1 text-clinic-blue-600 hover:bg-clinic-blue-50 dark:hover:bg-slate-800 rounded transition-all cursor-pointer"
+                                  title="Edit Record values"
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </button>
+                                
+                                <button
+                                  onClick={() => handleDeleteRecord(rec.RecordID)}
+                                  className="p-1 text-red-650 hover:bg-red-50 dark:hover:bg-slate-850 rounded transition-all cursor-pointer"
+                                  title="Delete Record permanently"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );

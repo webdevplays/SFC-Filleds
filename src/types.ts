@@ -38,6 +38,8 @@ export interface ClinicRecord {
   TotalPayout: number; // PersonCount * PayoutRate
   Remarks: string;
   CreatedDate: string; // ISO / YYYY-MM-DD T HH:mm:ss
+  IsPaid?: boolean;
+  PaidDate?: string;
 }
 
 export interface ActivityLog {

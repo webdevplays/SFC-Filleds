@@ -25,6 +25,7 @@ export default function EmployeeDashboard({ user, onRecordAdded }: EmployeeDashb
 
   const [assignedGroups, setAssignedGroups] = useState<Group[]>([]);
   const [records, setRecords] = useState<ClinicRecord[]>([]);
+  const [lastSettlementDate, setLastSettlementDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   
   // State for Record Entry Module (Only for Leaders)
@@ -53,12 +54,24 @@ export default function EmployeeDashboard({ user, onRecordAdded }: EmployeeDashb
         setSelectedGroupId(myGroups[0].GroupID);
       }
 
-      // Filter records relevant to this user's groups
+      // Filter records relevant to this user's groups to keep only Unpaid (Active) ones
       const myGroupIds = myGroups.map((g: Group) => g.GroupID);
-      const filtered = allRecords.filter((r: ClinicRecord) => 
-        myGroupIds.includes(r.GroupID)
+      const activeUnpaid = allRecords.filter((r: ClinicRecord) => 
+        myGroupIds.includes(r.GroupID) && !r.IsPaid
       );
-      setRecords(filtered);
+      setRecords(activeUnpaid);
+
+      // Find the latest settlement/coverage date from paid records in our assigned groups
+      const paidRecords = allRecords.filter((r: ClinicRecord) => 
+        myGroupIds.includes(r.GroupID) && !!r.IsPaid
+      );
+      if (paidRecords.length > 0) {
+        const dates = paidRecords.map(r => r.CreatedDate.split('T')[0]);
+        dates.sort();
+        setLastSettlementDate(dates[dates.length - 1]);
+      } else {
+        setLastSettlementDate(null);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -202,12 +215,18 @@ export default function EmployeeDashboard({ user, onRecordAdded }: EmployeeDashb
               <p className="text-[10px] text-clinic-blue-600 font-mono font-bold uppercase mt-1">{currentActiveGroup?.GroupCode}</p>
             </div>
 
-            {/* Position Display */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-2xl shadow-sm">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Your Action Duty</span>
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 font-heading mt-2 capitalize">{user.Position}</h3>
+            {/* Cycle Start Display */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-2xl shadow-sm opacity-95">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Current Cycle Started On</span>
+              <h3 className="text-sm font-bold text-clinic-blue-600 dark:text-clinic-blue-400 font-heading mt-2 font-mono">
+                {lastSettlementDate 
+                  ? new Date(new Date(lastSettlementDate).getTime() + 24*60*60*1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+                  : 'Initial Launch Date'}
+              </h3>
               <p className="text-[10px] text-slate-400 mt-1">
-                {isLeader ? 'Authorized to Submit, Edit & Delete' : 'Read-only access to submissions'}
+                {lastSettlementDate 
+                  ? `Cycle resumed after settlement on ${new Date(lastSettlementDate).toLocaleDateString()}`
+                  : 'All registered entries are active for payout'}
               </p>
             </div>
 
