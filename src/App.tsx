@@ -8,6 +8,7 @@ import EmployeeDashboard from './components/EmployeeDashboard';
 import EmployeesPage from './components/EmployeesPage';
 import GroupsPage from './components/GroupsPage';
 import DesignatedGroupsPage from './components/DesignatedGroupsPage';
+import BarangaysPage from './components/BarangaysPage';
 import RecordsPage from './components/RecordsPage';
 import ActivityLogsPage from './components/ActivityLogsPage';
 import {
@@ -253,6 +254,9 @@ export default function App() {
               )}
               {activeTab === 'designated-groups' && user.Position === 'Admin' && (
                 <DesignatedGroupsPage currentAdminId={user.EmployeeID} />
+              )}
+              {activeTab === 'barangays' && user.Position === 'Admin' && (
+                <BarangaysPage currentAdminId={user.EmployeeID} />
               )}
               {activeTab === 'groups' && user.Position === 'Admin' && (
                 <GroupsPage currentAdminId={user.EmployeeID} />

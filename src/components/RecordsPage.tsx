@@ -249,7 +249,7 @@ export default function RecordsPage({ user }: RecordsPageProps) {
           <Search className="absolute left-3.5 top-3 text-slate-400 h-4.5 w-4.5" />
           <input
             type="text"
-            placeholder="Search surveys by house number, Barangay group code, or submission date (YYYY-MM-DD)..."
+            placeholder="Search surveys by house count, Barangay group code, or submission date (YYYY-MM-DD)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-11 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-205 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
@@ -328,14 +328,17 @@ export default function RecordsPage({ user }: RecordsPageProps) {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-950/45 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-4">Survey Code ID</th>
-                  <th className="px-6 py-4">Group/Barangay Name</th>
-                  <th className="px-6 py-4 text-center">House Count</th>
-                  <th className="px-6 py-4 text-center">Population Count</th>
-                  <th className="px-6 py-4 text-center">Current Rate</th>
-                  <th className="px-6 py-4 text-right">Computed Payout</th>
-                  <th className="px-6 py-4">Assigned Staff</th>
-                  <th className="px-6 py-4">Created Date</th>
+                  <th className="px-6 py-4 no-print">Survey Code ID</th>
+                  <th className="px-6 py-4 uppercase">
+                    <span className="print:hidden">Group/Barangay Name</span>
+                    <span className="hidden print:inline-block">Group Name</span>
+                  </th>
+                  <th className="px-6 py-4 text-center uppercase">House Count</th>
+                  <th className="px-6 py-4 text-center uppercase">Population Count</th>
+                  <th className="px-6 py-4 text-center uppercase">Current Rate</th>
+                  <th className="px-6 py-4 text-right uppercase">Computed Payout</th>
+                  <th className="px-6 py-4 uppercase">Assigned Staff</th>
+                  <th className="px-6 py-4 no-print">Created Date</th>
                   <th className="px-6 py-4 no-print text-right">Actions</th>
                 </tr>
               </thead>
@@ -345,11 +348,11 @@ export default function RecordsPage({ user }: RecordsPageProps) {
                   const isOwnRecord = rec.LeaderID === user.EmployeeID;
                   return (
                     <tr key={rec.RecordID} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/20">
-                      <td className="px-6 py-4 font-mono font-bold text-clinic-blue-600">{rec.RecordID}</td>
+                      <td className="px-6 py-4 font-mono font-bold text-clinic-blue-600 no-print">{rec.RecordID}</td>
                       <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-250 truncate max-w-sm">
                         {getGroupName(rec.GroupID)}
                         {rec.Remarks && (
-                          <div className="text-[10px] font-normal text-slate-400 mt-0.5 max-w-xs truncate" title={rec.Remarks}>
+                          <div className="text-[10px] font-normal text-slate-400 mt-0.5 max-w-xs truncate no-print" title={rec.Remarks}>
                             {rec.Remarks}
                           </div>
                         )}
@@ -359,7 +362,7 @@ export default function RecordsPage({ user }: RecordsPageProps) {
                       <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-450">₱{rec.PayoutRate}</td>
                       <td className="px-6 py-4 text-right font-black text-clinic-green-600">₱{rec.TotalPayout.toLocaleString()}</td>
                       <td className="px-6 py-4 font-medium text-slate-600 dark:text-slate-400">{getLeaderName(rec.LeaderID)}</td>
-                      <td className="px-6 py-4 text-slate-500 dark:text-slate-450 font-mono text-[10px]">
+                      <td className="px-6 py-4 text-slate-500 dark:text-slate-450 font-mono text-[10px] no-print">
                         {new Date(rec.CreatedDate).toISOString().replace('T', ' ').slice(0, 19)}
                       </td>
                       <td className="px-6 py-4 no-print text-right">
@@ -436,13 +439,14 @@ export default function RecordsPage({ user }: RecordsPageProps) {
             {/* Form */}
             <form onSubmit={handleUpdateRecord} className="p-6 space-y-4">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">House Number *</label>
+                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">House Count *</label>
                 <input
-                  type="text"
+                  type="number"
                   required
+                  min="1"
                   value={editHouseNo}
                   onChange={(e) => setEditHouseNo(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold"
                 />
               </div>
 

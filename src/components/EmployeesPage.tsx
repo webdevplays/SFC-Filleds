@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { Employee, EmployeePosition, EmployeeStatus } from '../types';
+import { Employee, EmployeePosition, EmployeeStatus, Barangay } from '../types';
 import {
   Users,
   UserPlus,
@@ -35,8 +35,10 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
   const [pinCode, setPinCode] = useState('');
   const [position, setPosition] = useState<EmployeePosition>('Leader');
   const [contactNumber, setContactNumber] = useState('');
+  const [address, setAddress] = useState('');
   const [status, setStatus] = useState<EmployeeStatus>('Active');
   
+  const [barangays, setBarangays] = useState<Barangay[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -46,6 +48,8 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
       const res = await api.getEmployees();
       // Filter out hard revoked if needed, but the prompt says: Allow Admin to see everyone, and Soft Delete (Status becomes Revoked)
       setEmployees(res);
+      const bgys = await api.getBarangays();
+      setBarangays(bgys || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -64,6 +68,7 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
     setPinCode('');
     setPosition('Leader');
     setContactNumber('');
+    setAddress('');
     setStatus('Active');
     setFormError(null);
     setIsModalOpen(true);
@@ -76,6 +81,7 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
     setPinCode(emp.PINCode);
     setPosition(emp.Position);
     setContactNumber(emp.ContactNumber);
+    setAddress(emp.Address || '');
     setStatus(emp.Status);
     setFormError(null);
     setIsModalOpen(true);
@@ -102,7 +108,8 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
             PINCode: pinCode,
             Position: position,
             ContactNumber: contactNumber,
-            Status: status
+            Status: status,
+            Address: address
           },
           currentAdminId
         );
@@ -121,7 +128,8 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
             PINCode: pinCode,
             Position: position,
             ContactNumber: contactNumber,
-            Status: 'Active' // Default to active on creation
+            Status: 'Active', // Default to active on creation
+            Address: address
           },
           currentAdminId
         );
@@ -219,7 +227,12 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
                     <td className="px-6 py-4 font-mono font-bold text-clinic-blue-600">{emp.EmployeeID}</td>
                     <td className="px-6 py-4">
                       <div className="font-semibold text-slate-800 dark:text-slate-200">{emp.FullName}</div>
-                      <div className="text-[10px] text-slate-400">Registered: {emp.CreatedDate}</div>
+                      {emp.Address && (
+                        <div className="text-[10px] text-clinic-blue-600 dark:text-clinic-blue-400 font-bold uppercase tracking-wide mt-0.5">
+                          📍 {emp.Address}
+                        </div>
+                      )}
+                      <div className="text-[10px] text-slate-400 mt-1">Registered: {emp.CreatedDate}</div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono text-[11px] text-slate-600 dark:text-slate-350">
@@ -411,8 +424,29 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
                   placeholder="e.g. +63 900 123 4567"
                   value={contactNumber}
                   onChange={(e) => setContactNumber(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-5-0 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Resident Address (Barangay) *</label>
+                <select
+                  required
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500 font-medium"
+                >
+                  <option value="" disabled>-- Select Approved Barangay Address --</option>
+                  {barangays.map(b => (
+                    <option key={b.BarangayID} value={b.Name}>
+                      {b.Name} ({b.City})
+                    </option>
+                  ))}
+                  {barangays.length === 0 && (
+                    <option disabled>No approved Barangays found. Go configure under "Manage Barangays".</option>
+                  )}
+                </select>
+                <span className="text-[10px] text-slate-400 mt-1 block">Specify pre-set authorized clinic sector location.</span>
               </div>
 
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex space-x-3">

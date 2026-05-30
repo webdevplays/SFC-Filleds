@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { google } from 'googleapis';
-import { Employee, Group, ClinicRecord, ActivityLog, Notification, DesignatedGroup } from '../src/types';
+import { Employee, Group, ClinicRecord, ActivityLog, Notification, DesignatedGroup, Barangay } from '../src/types';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const EMPLOYEES_FILE = path.join(DATA_DIR, 'employees.json');
@@ -10,6 +10,7 @@ const RECORDS_FILE = path.join(DATA_DIR, 'records.json');
 const LOGS_FILE = path.join(DATA_DIR, 'activity_logs.json');
 const NOTIFICATIONS_FILE = path.join(DATA_DIR, 'notifications.json');
 const DESIGNATED_GROUPS_FILE = path.join(DATA_DIR, 'designated_groups.json');
+const BARANGAYS_FILE = path.join(DATA_DIR, 'barangays.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -88,7 +89,7 @@ const DEFAULT_RECORDS: ClinicRecord[] = [
     RecordID: 'REC001',
     GroupID: 'GRP001',
     LeaderID: 'EMP002',
-    HouseNumber: '124-A',
+    HouseNumber: '5',
     PersonCount: 5,
     PayoutRate: 50,
     TotalPayout: 250,
@@ -99,7 +100,7 @@ const DEFAULT_RECORDS: ClinicRecord[] = [
     RecordID: 'REC002',
     GroupID: 'GRP001',
     LeaderID: 'EMP002',
-    HouseNumber: '142-B',
+    HouseNumber: '4',
     PersonCount: 4,
     PayoutRate: 50,
     TotalPayout: 200,
@@ -110,7 +111,7 @@ const DEFAULT_RECORDS: ClinicRecord[] = [
     RecordID: 'REC003',
     GroupID: 'GRP002',
     LeaderID: 'EMP002',
-    HouseNumber: 'G-332',
+    HouseNumber: '6',
     PersonCount: 6,
     PayoutRate: 75,
     TotalPayout: 450,
@@ -193,6 +194,13 @@ let localRecords: ClinicRecord[] = readJSON(RECORDS_FILE, DEFAULT_RECORDS);
 let localLogs: ActivityLog[] = readJSON(LOGS_FILE, DEFAULT_LOGS);
 let localNotifications: Notification[] = readJSON(NOTIFICATIONS_FILE, DEFAULT_NOTIFICATIONS);
 let localDesignatedGroups: DesignatedGroup[] = readJSON(DESIGNATED_GROUPS_FILE, DEFAULT_DESIGNATED_GROUPS);
+
+const DEFAULT_BARANGAYS: Barangay[] = [
+  { BarangayID: 'BGY001', Name: 'Barangay San Juan', City: 'Metro Manila', Description: 'Coastal residential sector', CreatedDate: '2026-05-30' },
+  { BarangayID: 'BGY002', Name: 'Barangay Santa Lucia', City: 'Metro Manila', Description: 'Commercial downtown sector', CreatedDate: '2026-05-30' },
+  { BarangayID: 'BGY003', Name: 'Barangay Santo Cristo', City: 'Metro Manila', Description: 'Inner hillside sub-sector', CreatedDate: '2026-05-30' }
+];
+let localBarangays: Barangay[] = readJSON(BARANGAYS_FILE, DEFAULT_BARANGAYS);
 
 /**
  * GOOGLE SHEETS API CONFIGURATION
@@ -642,4 +650,13 @@ export async function getDesignatedGroups(): Promise<DesignatedGroup[]> {
 export async function saveDesignatedGroups(groups: DesignatedGroup[]): Promise<void> {
   localDesignatedGroups = groups;
   writeJSON(DESIGNATED_GROUPS_FILE, localDesignatedGroups);
+}
+
+export async function getBarangays(): Promise<Barangay[]> {
+  return localBarangays;
+}
+
+export async function saveBarangays(list: Barangay[]): Promise<void> {
+  localBarangays = list;
+  writeJSON(BARANGAYS_FILE, localBarangays);
 }

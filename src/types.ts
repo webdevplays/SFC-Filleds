@@ -14,6 +14,7 @@ export interface Employee {
   Status: EmployeeStatus;
   ContactNumber: string;
   CreatedDate: string;
+  Address?: string; // Approved Barangay address or other configured address
 }
 
 export interface Group {
@@ -72,6 +73,14 @@ export interface DesignatedGroup {
   DesignatedID: string;
   GroupName: string;
   GroupCode: string;
+  Description?: string;
+  CreatedDate: string;
+}
+
+export interface Barangay {
+  BarangayID: string;
+  Name: string;
+  City: string;
   Description?: string;
   CreatedDate: string;
 }

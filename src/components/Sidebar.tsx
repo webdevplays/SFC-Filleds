@@ -11,7 +11,8 @@ import {
   Activity,
   User,
   Shield,
-  BookOpen
+  BookOpen,
+  MapPin
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -59,6 +60,12 @@ export default function Sidebar({
       id: 'designated-groups',
       label: 'Designated Groups',
       icon: BookOpen,
+      allowed: ['Admin'],
+    },
+    {
+      id: 'barangays',
+      label: 'Manage Barangays',
+      icon: MapPin,
       allowed: ['Admin'],
     },
     {

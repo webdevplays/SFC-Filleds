@@ -14,9 +14,11 @@ import {
   saveNotifications,
   addNotification,
   getDesignatedGroups,
-  saveDesignatedGroups
+  saveDesignatedGroups,
+  getBarangays,
+  saveBarangays
 } from './server/db';
-import { Employee, Group, ClinicRecord, DesignatedGroup } from './src/types';
+import { Employee, Group, ClinicRecord, DesignatedGroup, Barangay } from './src/types';
 
 async function startServer() {
   const app = express();
@@ -140,7 +142,7 @@ async function startServer() {
   // Create standard employee
   app.post('/api/employees', async (req, res) => {
     try {
-      const { FullName, Username, PINCode, Position, ContactNumber } = req.body;
+      const { FullName, Username, PINCode, Position, ContactNumber, Address } = req.body;
       const creator = req.headers['x-user-id'] as string || 'Admin';
 
       if (!FullName || !Username || !PINCode || !Position) {
@@ -169,6 +171,7 @@ async function startServer() {
         Position: Position as any,
         Status: 'Active',
         ContactNumber: ContactNumber || '',
+        Address: Address || '',
         CreatedDate: new Date().toISOString().split('T')[0]
       };
 
@@ -194,7 +197,7 @@ async function startServer() {
   app.put('/api/employees/:id', async (req, res) => {
     try {
       const { id } = req.params;
-      const { FullName, Username, PINCode, Position, ContactNumber, Status } = req.body;
+      const { FullName, Username, PINCode, Position, ContactNumber, Status, Address } = req.body;
       const modifier = req.headers['x-user-id'] as string || 'Admin';
 
       const employees = await getEmployees();
@@ -226,7 +229,8 @@ async function startServer() {
         PINCode: PINCode !== undefined ? PINCode.trim() : existing.PINCode,
         Position: Position !== undefined ? Position : existing.Position,
         ContactNumber: ContactNumber !== undefined ? ContactNumber : existing.ContactNumber,
-        Status: Status !== undefined ? Status : existing.Status
+        Status: Status !== undefined ? Status : existing.Status,
+        Address: Address !== undefined ? Address : existing.Address
       };
 
       await saveEmployees(employees);
@@ -520,6 +524,112 @@ async function startServer() {
 
       await addLog(modifier, `Deleted designated group template: ${deletedName}`);
       res.json({ success: true, message: 'Designated group template deleted successfully.' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * ==========================================
+   * APPROVED BARANGAY SETTINGS (ADMIN CONFIGURATION)
+   * ==========================================
+   */
+
+  // Fetch all Barangays
+  app.get('/api/barangays', async (req, res) => {
+    try {
+      const list = await getBarangays();
+      res.json(list);
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Create Barangay
+  app.post('/api/barangays', async (req, res) => {
+    try {
+      const { Name, City, Description } = req.body;
+      const creator = req.headers['x-user-id'] as string || 'Admin';
+
+      if (!Name || !City) {
+        return res.status(400).json({ success: false, message: 'Required fields missing: Name, City.' });
+      }
+
+      const list = await getBarangays();
+
+      const maxIdNum = list.reduce((max, b) => {
+        const num = parseInt(b.BarangayID.replace(/[^0-9]/g, '') || '0', 10);
+        return num > max ? num : max;
+      }, 0);
+      const BarangayID = 'BGY' + String(maxIdNum + 1).padStart(3, '0');
+
+      const newItem: Barangay = {
+        BarangayID,
+        Name: Name.trim(),
+        City: City.trim(),
+        Description: Description ? Description.trim() : '',
+        CreatedDate: new Date().toISOString().split('T')[0]
+      };
+
+      list.push(newItem);
+      await saveBarangays(list);
+
+      await addLog(creator, `Created approved barangay sector: ${Name.trim()}`);
+      res.json({ success: true, barangay: newItem });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Update Barangay
+  app.put('/api/barangays/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { Name, City, Description } = req.body;
+      const modifier = req.headers['x-user-id'] as string || 'Admin';
+
+      const list = await getBarangays();
+      const idx = list.findIndex(b => b.BarangayID === id);
+
+      if (idx === -1) {
+        return res.status(404).json({ success: false, message: 'Barangay not found.' });
+      }
+
+      list[idx] = {
+        ...list[idx],
+        Name: Name ? Name.trim() : list[idx].Name,
+        City: City ? City.trim() : list[idx].City,
+        Description: Description !== undefined ? Description.trim() : list[idx].Description
+      };
+
+      await saveBarangays(list);
+      await addLog(modifier, `Updated details for Barangay ID: ${id}`);
+
+      res.json({ success: true, barangay: list[idx] });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Delete Barangay
+  app.delete('/api/barangays/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const modifier = req.headers['x-user-id'] as string || 'Admin';
+
+      const list = await getBarangays();
+      const idx = list.findIndex(b => b.BarangayID === id);
+
+      if (idx === -1) {
+        return res.status(404).json({ success: false, message: 'Barangay not found.' });
+      }
+
+      const deletedName = list[idx].Name;
+      list.splice(idx, 1);
+      await saveBarangays(list);
+
+      await addLog(modifier, `Deleted approved barangay: ${deletedName}`);
+      res.json({ success: true, message: 'Barangay deleted successfully.' });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
     }

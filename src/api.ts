@@ -1,4 +1,4 @@
-import { Employee, Group, ClinicRecord, ActivityLog, Notification, DesignatedGroup } from './types';
+import { Employee, Group, ClinicRecord, ActivityLog, Notification, DesignatedGroup, Barangay } from './types';
 
 const BASE_URL = '';
 
@@ -108,7 +108,7 @@ const DEFAULT_RECORDS: ClinicRecord[] = [
     RecordID: 'REC001',
     GroupID: 'GRP001',
     LeaderID: 'EMP002',
-    HouseNumber: '124-A',
+    HouseNumber: '5',
     PersonCount: 5,
     PayoutRate: 50,
     TotalPayout: 250,
@@ -119,7 +119,7 @@ const DEFAULT_RECORDS: ClinicRecord[] = [
     RecordID: 'REC002',
     GroupID: 'GRP001',
     LeaderID: 'EMP002',
-    HouseNumber: '142-B',
+    HouseNumber: '4',
     PersonCount: 4,
     PayoutRate: 50,
     TotalPayout: 200,
@@ -130,7 +130,7 @@ const DEFAULT_RECORDS: ClinicRecord[] = [
     RecordID: 'REC003',
     GroupID: 'GRP002',
     LeaderID: 'EMP002',
-    HouseNumber: 'G-332',
+    HouseNumber: '6',
     PersonCount: 6,
     PayoutRate: 75,
     TotalPayout: 450,
@@ -193,7 +193,14 @@ const STORAGE_KEYS = {
   LOGS: 'st_francis_logs',
   NOTIFICATIONS: 'st_francis_notifications',
   DESIGNATED_GROUPS: 'st_francis_designated_groups',
+  BARANGAYS: 'st_francis_barangays',
 };
+
+const DEFAULT_BARANGAYS: Barangay[] = [
+  { BarangayID: 'BGY001', Name: 'Barangay San Juan', City: 'Metro Manila', Description: 'Coastal residential sector', CreatedDate: '2026-05-30' },
+  { BarangayID: 'BGY002', Name: 'Barangay Santa Lucia', City: 'Metro Manila', Description: 'Commercial downtown sector', CreatedDate: '2026-05-30' },
+  { BarangayID: 'BGY003', Name: 'Barangay Santo Cristo', City: 'Metro Manila', Description: 'Inner hillside sub-sector', CreatedDate: '2026-05-30' }
+];
 
 // Client-side state configurations
 let useLocalDB = false;
@@ -631,6 +638,62 @@ const simulatedApi = {
     }
     throw new Error('Designated group template not found.');
   },
+
+  getBarangays: async () => {
+    return getLocalItem<Barangay>(STORAGE_KEYS.BARANGAYS, DEFAULT_BARANGAYS);
+  },
+
+  createBarangay: async (data: Partial<Barangay>, creatorId: string) => {
+    const list = getLocalItem<Barangay>(STORAGE_KEYS.BARANGAYS, DEFAULT_BARANGAYS);
+    const maxIdNum = list.reduce((max, b) => {
+      const num = parseInt(b.BarangayID.replace(/[^0-9]/g, '') || '0', 10);
+      return num > max ? num : max;
+    }, 0);
+    const BarangayID = 'BGY' + String(maxIdNum + 1).padStart(3, '0');
+
+    const newItem: Barangay = {
+      BarangayID,
+      Name: data.Name || 'Unnamed Barangay',
+      City: data.City || 'Metro Manila',
+      Description: data.Description || '',
+      CreatedDate: new Date().toISOString().split('T')[0]
+    };
+
+    list.push(newItem);
+    setLocalItem(STORAGE_KEYS.BARANGAYS, list);
+    addLocalLog(creatorId, `Created approved barangay: ${newItem.Name}`);
+    return { success: true, barangay: newItem };
+  },
+
+  updateBarangay: async (id: string, data: Partial<Barangay>, modifierId: string) => {
+    const list = getLocalItem<Barangay>(STORAGE_KEYS.BARANGAYS, DEFAULT_BARANGAYS);
+    const idx = list.findIndex(b => b.BarangayID === id);
+    if (idx !== -1) {
+      list[idx] = {
+        ...list[idx],
+        Name: data.Name || list[idx].Name,
+        City: data.City || list[idx].City,
+        Description: data.Description !== undefined ? data.Description : list[idx].Description
+      };
+      setLocalItem(STORAGE_KEYS.BARANGAYS, list);
+      addLocalLog(modifierId, `Updated approved barangay: ${list[idx].Name}`);
+      return { success: true, barangay: list[idx] };
+    }
+    throw new Error('Barangay not found.');
+  },
+
+  deleteBarangay: async (id: string, modifierId: string) => {
+    const list = getLocalItem<Barangay>(STORAGE_KEYS.BARANGAYS, DEFAULT_BARANGAYS);
+    const idx = list.findIndex(b => b.BarangayID === id);
+    if (idx !== -1) {
+      const deletedName = list[idx].Name;
+      list.splice(idx, 1);
+      setLocalItem(STORAGE_KEYS.BARANGAYS, list);
+      addLocalLog(modifierId, `Deleted approved barangay: ${deletedName}`);
+      return { success: true };
+    }
+    throw new Error('Barangay not found.');
+  },
 };
 
 function isStaticError(error: any): boolean {
@@ -801,5 +864,30 @@ export const api = {
     withFallback(
       () => apiRequest(`/api/designated-groups/${id}`, 'DELETE', undefined, modifierId),
       () => simulatedApi.deleteDesignatedGroup(id, modifierId)
+    ),
+
+  // Barangays Settings API
+  getBarangays: () =>
+    withFallback(
+      () => apiRequest('/api/barangays'),
+      () => simulatedApi.getBarangays()
+    ),
+
+  createBarangay: (data: Partial<Barangay>, creatorId: string) =>
+    withFallback(
+      () => apiRequest('/api/barangays', 'POST', data, creatorId),
+      () => simulatedApi.createBarangay(data, creatorId)
+    ),
+
+  updateBarangay: (id: string, data: Partial<Barangay>, modifierId: string) =>
+    withFallback(
+      () => apiRequest(`/api/barangays/${id}`, 'PUT', data, modifierId),
+      () => simulatedApi.updateBarangay(id, data, modifierId)
+    ),
+
+  deleteBarangay: (id: string, modifierId: string) =>
+    withFallback(
+      () => apiRequest(`/api/barangays/${id}`, 'DELETE', undefined, modifierId),
+      () => simulatedApi.deleteBarangay(id, modifierId)
     )
 };
