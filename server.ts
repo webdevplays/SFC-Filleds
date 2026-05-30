@@ -12,9 +12,11 @@ import {
   addLog,
   getNotifications,
   saveNotifications,
-  addNotification
+  addNotification,
+  getDesignatedGroups,
+  saveDesignatedGroups
 } from './server/db';
-import { Employee, Group, ClinicRecord } from './src/types';
+import { Employee, Group, ClinicRecord, DesignatedGroup } from './src/types';
 
 async function startServer() {
   const app = express();
@@ -412,6 +414,112 @@ async function startServer() {
       await addNotification(modifier, 'Group Retired', `Group ${group.GroupName} is now inactive.`, 'warning');
 
       res.json({ success: true, message: 'Group retired successfully.' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
+   * ==========================================
+   * DESIGNATED GROUP PRESETS (ADMIN TEMPLATES)
+   * ==========================================
+   */
+
+  // Fetch Designated Groups
+  app.get('/api/designated-groups', async (req, res) => {
+    try {
+      const list = await getDesignatedGroups();
+      res.json(list);
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Create Designated Group
+  app.post('/api/designated-groups', async (req, res) => {
+    try {
+      const { GroupName, GroupCode, Description } = req.body;
+      const creator = req.headers['x-user-id'] as string || 'Admin';
+
+      if (!GroupName || !GroupCode) {
+        return res.status(400).json({ success: false, message: 'Required fields missing: GroupName, GroupCode.' });
+      }
+
+      const list = await getDesignatedGroups();
+
+      const maxIdNum = list.reduce((max, d) => {
+        const num = parseInt(d.DesignatedID.replace(/[^0-9]/g, '') || '0', 10);
+        return num > max ? num : max;
+      }, 0);
+      const DesignatedID = 'DSG' + String(maxIdNum + 1).padStart(3, '0');
+
+      const newItem: DesignatedGroup = {
+        DesignatedID,
+        GroupName: GroupName.trim(),
+        GroupCode: GroupCode.trim().toUpperCase(),
+        Description: Description ? Description.trim() : '',
+        CreatedDate: new Date().toISOString().split('T')[0]
+      };
+
+      list.push(newItem);
+      await saveDesignatedGroups(list);
+
+      await addLog(creator, `Created designated group template: ${GroupName.trim()}`);
+      res.json({ success: true, designatedGroup: newItem });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Update Designated Group
+  app.put('/api/designated-groups/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { GroupName, GroupCode, Description } = req.body;
+      const modifier = req.headers['x-user-id'] as string || 'Admin';
+
+      const list = await getDesignatedGroups();
+      const idx = list.findIndex(d => d.DesignatedID === id);
+
+      if (idx === -1) {
+        return res.status(404).json({ success: false, message: 'Designated group template not found.' });
+      }
+
+      list[idx] = {
+        ...list[idx],
+        GroupName: GroupName ? GroupName.trim() : list[idx].GroupName,
+        GroupCode: GroupCode ? GroupCode.trim().toUpperCase() : list[idx].GroupCode,
+        Description: Description !== undefined ? Description.trim() : list[idx].Description
+      };
+
+      await saveDesignatedGroups(list);
+      await addLog(modifier, `Updated designated group template details for ID: ${id}`);
+
+      res.json({ success: true, designatedGroup: list[idx] });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Delete Designated Group
+  app.delete('/api/designated-groups/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const modifier = req.headers['x-user-id'] as string || 'Admin';
+
+      const list = await getDesignatedGroups();
+      const idx = list.findIndex(d => d.DesignatedID === id);
+
+      if (idx === -1) {
+        return res.status(404).json({ success: false, message: 'Designated group template not found.' });
+      }
+
+      const deletedName = list[idx].GroupName;
+      list.splice(idx, 1);
+      await saveDesignatedGroups(list);
+
+      await addLog(modifier, `Deleted designated group template: ${deletedName}`);
+      res.json({ success: true, message: 'Designated group template deleted successfully.' });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
     }

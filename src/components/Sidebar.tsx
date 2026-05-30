@@ -56,6 +56,12 @@ export default function Sidebar({
       allowed: ['Admin'],
     },
     {
+      id: 'designated-groups',
+      label: 'Designated Groups',
+      icon: BookOpen,
+      allowed: ['Admin'],
+    },
+    {
       id: 'groups',
       label: 'Manage Groups',
       icon: Briefcase,
@@ -72,9 +78,9 @@ export default function Sidebar({
   return (
     <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-screen no-print transition-colors duration-300">
       {/* Brand Header */}
-      <div className="p-6 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="w-10 h-10 bg-clinic-blue-600 rounded-lg flex items-center justify-center text-white">
-          <Activity className="w-6 h-6" />
+      <div className="p-5 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center border border-slate-100 dark:border-slate-800 shadow-xs overflow-hidden">
+          <img src="https://www.image2url.com/r2/default/images/1779782151932-e0fcc309-3ed7-4c15-a3fa-1859006492a3.png" alt="St. Francis Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
         </div>
         <div>
           <h1 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Saint Francis</h1>

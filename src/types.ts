@@ -67,3 +67,12 @@ export interface SessionData {
     Status: EmployeeStatus;
   } | null;
 }
+
+export interface DesignatedGroup {
+  DesignatedID: string;
+  GroupName: string;
+  GroupCode: string;
+  Description?: string;
+  CreatedDate: string;
+}
+

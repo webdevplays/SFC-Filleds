@@ -1,4 +1,4 @@
-import { Employee, Group, ClinicRecord, ActivityLog, Notification } from './types';
+import { Employee, Group, ClinicRecord, ActivityLog, Notification, DesignatedGroup } from './types';
 
 const BASE_URL = '';
 
@@ -162,12 +162,37 @@ const DEFAULT_NOTIFICATIONS: Notification[] = [
   }
 ];
 
+const DEFAULT_DESIGNATED_GROUPS: DesignatedGroup[] = [
+  {
+    DesignatedID: 'DSG001',
+    GroupName: 'Barangay San Juan Field Team',
+    GroupCode: 'BSJ-01',
+    Description: 'Covering the coastal residential blocks of Barangay San Juan',
+    CreatedDate: '2026-05-30'
+  },
+  {
+    DesignatedID: 'DSG002',
+    GroupName: 'Barangay Santa Lucia Field Team',
+    GroupCode: 'BSL-02',
+    Description: 'Covering the commercial zones of Barangay Santa Lucia',
+    CreatedDate: '2026-05-30'
+  },
+  {
+    DesignatedID: 'DSG003',
+    GroupName: 'Barangay Santo Cristo Mobile Clinic',
+    GroupCode: 'BSC-03',
+    Description: 'Dedicated to inner hillside sub-sectors of Santo Cristo',
+    CreatedDate: '2026-05-30'
+  }
+];
+
 const STORAGE_KEYS = {
   EMPLOYEES: 'st_francis_employees',
   GROUPS: 'st_francis_groups',
   RECORDS: 'st_francis_records',
   LOGS: 'st_francis_logs',
   NOTIFICATIONS: 'st_francis_notifications',
+  DESIGNATED_GROUPS: 'st_francis_designated_groups',
 };
 
 // Client-side state configurations
@@ -550,6 +575,62 @@ const simulatedApi = {
   getLogs: async () => {
     return getLocalItem<ActivityLog>(STORAGE_KEYS.LOGS, DEFAULT_LOGS);
   },
+
+  getDesignatedGroups: async () => {
+    return getLocalItem<DesignatedGroup>(STORAGE_KEYS.DESIGNATED_GROUPS, DEFAULT_DESIGNATED_GROUPS);
+  },
+
+  createDesignatedGroup: async (data: Partial<DesignatedGroup>, creatorId: string) => {
+    const list = getLocalItem<DesignatedGroup>(STORAGE_KEYS.DESIGNATED_GROUPS, DEFAULT_DESIGNATED_GROUPS);
+    const maxIdNum = list.reduce((max, d) => {
+      const num = parseInt(d.DesignatedID.replace(/[^0-9]/g, '') || '0', 10);
+      return num > max ? num : max;
+    }, 0);
+    const DesignatedID = 'DSG' + String(maxIdNum + 1).padStart(3, '0');
+
+    const newItem: DesignatedGroup = {
+      DesignatedID,
+      GroupName: data.GroupName || 'Unnamed Preset Group',
+      GroupCode: (data.GroupCode || 'GEN-01').toUpperCase(),
+      Description: data.Description || '',
+      CreatedDate: new Date().toISOString().split('T')[0]
+    };
+
+    list.push(newItem);
+    setLocalItem(STORAGE_KEYS.DESIGNATED_GROUPS, list);
+    addLocalLog(creatorId, `Created designated group template: ${newItem.GroupName}`);
+    return { success: true, designatedGroup: newItem };
+  },
+
+  updateDesignatedGroup: async (id: string, data: Partial<DesignatedGroup>, modifierId: string) => {
+    const list = getLocalItem<DesignatedGroup>(STORAGE_KEYS.DESIGNATED_GROUPS, DEFAULT_DESIGNATED_GROUPS);
+    const idx = list.findIndex(d => d.DesignatedID === id);
+    if (idx !== -1) {
+      list[idx] = {
+        ...list[idx],
+        GroupName: data.GroupName || list[idx].GroupName,
+        GroupCode: (data.GroupCode || list[idx].GroupCode).toUpperCase(),
+        Description: data.Description !== undefined ? data.Description : list[idx].Description
+      };
+      setLocalItem(STORAGE_KEYS.DESIGNATED_GROUPS, list);
+      addLocalLog(modifierId, `Updated designated group template details for ID: ${id}`);
+      return { success: true, designatedGroup: list[idx] };
+    }
+    throw new Error('Designated group template not found.');
+  },
+
+  deleteDesignatedGroup: async (id: string, modifierId: string) => {
+    const list = getLocalItem<DesignatedGroup>(STORAGE_KEYS.DESIGNATED_GROUPS, DEFAULT_DESIGNATED_GROUPS);
+    const idx = list.findIndex(d => d.DesignatedID === id);
+    if (idx !== -1) {
+      const deletedName = list[idx].GroupName;
+      list.splice(idx, 1);
+      setLocalItem(STORAGE_KEYS.DESIGNATED_GROUPS, list);
+      addLocalLog(modifierId, `Deleted designated group template: ${deletedName}`);
+      return { success: true };
+    }
+    throw new Error('Designated group template not found.');
+  },
 };
 
 function isStaticError(error: any): boolean {
@@ -695,5 +776,30 @@ export const api = {
     withFallback(
       () => apiRequest('/api/logs'),
       () => simulatedApi.getLogs()
+    ),
+
+  // Designated Groups
+  getDesignatedGroups: () =>
+    withFallback(
+      () => apiRequest('/api/designated-groups'),
+      () => simulatedApi.getDesignatedGroups()
+    ),
+
+  createDesignatedGroup: (data: Partial<DesignatedGroup>, creatorId: string) =>
+    withFallback(
+      () => apiRequest('/api/designated-groups', 'POST', data, creatorId),
+      () => simulatedApi.createDesignatedGroup(data, creatorId)
+    ),
+
+  updateDesignatedGroup: (id: string, data: Partial<DesignatedGroup>, modifierId: string) =>
+    withFallback(
+      () => apiRequest(`/api/designated-groups/${id}`, 'PUT', data, modifierId),
+      () => simulatedApi.updateDesignatedGroup(id, data, modifierId)
+    ),
+
+  deleteDesignatedGroup: (id: string, modifierId: string) =>
+    withFallback(
+      () => apiRequest(`/api/designated-groups/${id}`, 'DELETE', undefined, modifierId),
+      () => simulatedApi.deleteDesignatedGroup(id, modifierId)
     )
 };

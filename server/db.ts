@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { google } from 'googleapis';
-import { Employee, Group, ClinicRecord, ActivityLog, Notification } from '../src/types';
+import { Employee, Group, ClinicRecord, ActivityLog, Notification, DesignatedGroup } from '../src/types';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const EMPLOYEES_FILE = path.join(DATA_DIR, 'employees.json');
@@ -9,6 +9,7 @@ const GROUPS_FILE = path.join(DATA_DIR, 'groups.json');
 const RECORDS_FILE = path.join(DATA_DIR, 'records.json');
 const LOGS_FILE = path.join(DATA_DIR, 'activity_logs.json');
 const NOTIFICATIONS_FILE = path.join(DATA_DIR, 'notifications.json');
+const DESIGNATED_GROUPS_FILE = path.join(DATA_DIR, 'designated_groups.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -162,11 +163,36 @@ function readJSON(filePath: string, defaultData: any) {
 }
 
 // Initial Local Load of files (acting as immediate fallback database)
+const DEFAULT_DESIGNATED_GROUPS: DesignatedGroup[] = [
+  {
+    DesignatedID: 'DSG001',
+    GroupName: 'Barangay San Juan Field Team',
+    GroupCode: 'BSJ-01',
+    Description: 'Covering the coastal residential blocks of Barangay San Juan',
+    CreatedDate: '2026-05-30'
+  },
+  {
+    DesignatedID: 'DSG002',
+    GroupName: 'Barangay Santa Lucia Field Team',
+    GroupCode: 'BSL-02',
+    Description: 'Covering the commercial zones of Barangay Santa Lucia',
+    CreatedDate: '2026-05-30'
+  },
+  {
+    DesignatedID: 'DSG003',
+    GroupName: 'Barangay Santo Cristo Mobile Clinic',
+    GroupCode: 'BSC-03',
+    Description: 'Dedicated to inner hillside sub-sectors of Santo Cristo',
+    CreatedDate: '2026-05-30'
+  }
+];
+
 let localEmployees: Employee[] = readJSON(EMPLOYEES_FILE, DEFAULT_EMPLOYEES);
 let localGroups: Group[] = readJSON(GROUPS_FILE, DEFAULT_GROUPS);
 let localRecords: ClinicRecord[] = readJSON(RECORDS_FILE, DEFAULT_RECORDS);
 let localLogs: ActivityLog[] = readJSON(LOGS_FILE, DEFAULT_LOGS);
 let localNotifications: Notification[] = readJSON(NOTIFICATIONS_FILE, DEFAULT_NOTIFICATIONS);
+let localDesignatedGroups: DesignatedGroup[] = readJSON(DESIGNATED_GROUPS_FILE, DEFAULT_DESIGNATED_GROUPS);
 
 /**
  * GOOGLE SHEETS API CONFIGURATION
@@ -607,4 +633,13 @@ export async function addNotification(
   };
   notifs.unshift(newNotif);
   await saveNotifications(notifs);
+}
+
+export async function getDesignatedGroups(): Promise<DesignatedGroup[]> {
+  return localDesignatedGroups;
+}
+
+export async function saveDesignatedGroups(groups: DesignatedGroup[]): Promise<void> {
+  localDesignatedGroups = groups;
+  writeJSON(DESIGNATED_GROUPS_FILE, localDesignatedGroups);
 }

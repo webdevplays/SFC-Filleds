@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { Group, Employee } from '../types';
+import { Group, Employee, DesignatedGroup } from '../types';
 import {
   Briefcase,
   Plus,
@@ -13,7 +13,9 @@ import {
   Edit2,
   Trash2,
   Layers,
-  UserCheck
+  UserCheck,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 interface GroupsPageProps {
@@ -23,9 +25,11 @@ interface GroupsPageProps {
 export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [designatedGroups, setDesignatedGroups] = useState<DesignatedGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
 
   // Form Fields
   const [groupName, setGroupName] = useState('');
@@ -44,8 +48,10 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
     try {
       const allGroups = await api.getGroups();
       const allEmps = await api.getEmployees();
+      const allPresets = await api.getDesignatedGroups();
       setGroups(allGroups);
       setEmployees(allEmps.filter((e: Employee) => e.Status === 'Active'));
+      setDesignatedGroups(allPresets);
 
       // Pre-select first leader if available
       const leadersList = allEmps.filter((e: Employee) => e.Position === 'Leader' && e.Status === 'Active');
@@ -221,100 +227,117 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-clinic-blue-600 border-t-transparent" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-3xl divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden shadow-xs">
           {groups.map((group) => {
             const isActive = group.Status === 'Active';
+            const isExpanded = expandedGroupId === group.GroupID;
+            const leaderName = getLeaderName(group.LeaderID);
+
             return (
               <div
                 key={group.GroupID}
-                className={`bg-white dark:bg-slate-900 border ${
-                  isActive ? 'border-slate-100 dark:border-slate-805/80' : 'border-slate-205 dark:border-slate-800'
-                } rounded-3xl p-6 shadow-xs relative transition-all hover:shadow-md`}
+                className="transition-colors hover:bg-slate-50/40 dark:hover:bg-slate-950/20"
               >
-                {/* Header Row */}
-                <div className="flex justify-between items-start gap-4 pb-4 border-b border-slate-50 dark:border-slate-800">
-                  <div className="min-w-0">
-                    <span className="bg-clinic-blue-50 dark:bg-sky-950/40 text-clinic-blue-700 dark:text-clinic-blue-300 font-mono font-bold text-[10px] uppercase px-2 py-0.5 rounded mr-2">
-                      {group.GroupCode}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      isActive ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30' : 'bg-slate-100 text-slate-650'
-                    }`}>
-                      {group.Status}
-                    </span>
-                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 font-heading mt-2.5">
-                      {group.GroupName}
-                    </h3>
-                  </div>
-
-                  <div className="text-right flex-shrink-0">
-                    <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Payout rate</span>
-                    <span className="text-lg font-black text-clinic-green-600 font-heading">
-                      ₱{group.PayoutRate} <span className="text-[10px] font-semibold text-slate-400">/ person</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Team Details */}
-                <div className="py-4 space-y-3.5">
-                  <div className="flex items-start space-x-3 text-xs">
-                    <UserCheck className="h-4.5 w-4.5 text-clinic-blue-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase">Delegated Leader</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200">
-                        {getLeaderName(group.LeaderID)}
-                      </span>
+                {/* Header Row Click Trigger */}
+                <div
+                  onClick={() => setExpandedGroupId(isExpanded ? null : group.GroupID)}
+                  className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer select-none"
+                >
+                  <div className="flex items-center space-x-4 min-w-0 flex-1">
+                    {/* Expand Chevron Icon */}
+                    <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-804/80 text-slate-400">
+                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </div>
-                  </div>
 
-                  <div className="flex items-start space-x-3 text-xs">
-                    <Users className="h-4.5 w-4.5 text-clinic-green-650 flex-shrink-0 mt-0.5" />
                     <div className="min-w-0 flex-1">
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase">Assigned Co-Leaders</span>
-                      <span className="font-medium text-slate-600 dark:text-slate-400 block truncate">
-                        {getCoLeadersList(group.CoLeaderIDs)}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-clinic-blue-50 dark:bg-sky-950/40 text-clinic-blue-700 dark:text-clinic-blue-300 font-mono font-bold text-[9px] uppercase px-1.5 py-0.5 rounded">
+                          {group.GroupCode}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                          isActive ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30' : 'bg-slate-100 text-slate-655'
+                        }`}>
+                          {group.Status}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 font-heading mt-1.5">
+                        {group.GroupName}
+                      </h3>
                     </div>
                   </div>
 
-                  <div className="flex items-start space-x-3 text-xs">
-                    <Calendar className="h-4.5 w-4.5 text-slate-400 flex-shrink-0 mt-0.5" />
+                  {/* Leader and Rate block display */}
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs sm:text-right flex-shrink-0">
                     <div>
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase font-mono">Commission Start Date</span>
-                      <span className="font-medium text-slate-600 dark:text-slate-405">
-                        {group.StartDate}
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Delegated Leader</span>
+                      <span className="font-semibold text-slate-705 dark:text-slate-200">
+                        {leaderName}
+                      </span>
+                    </div>
+
+                    <div className="sm:text-right min-w-[100px]">
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Payout Rate</span>
+                      <span className="font-black text-clinic-green-600 font-heading text-sm">
+                        ₱{group.PayoutRate} <span className="text-[10px] font-semibold text-slate-450">/ person</span>
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Action Buttons Footer */}
-                {isActive && (
-                  <div className="pt-4 border-t border-slate-50 dark:border-slate-800 flex justify-end space-x-2">
-                    <button
-                      onClick={() => openEditModal(group)}
-                      title="Update parameters or rates"
-                      className="p-1 px-3.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-350 font-bold text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 flex items-center space-x-1 transition-all cursor-pointer"
-                    >
-                      <Edit2 className="h-3 w-3" />
-                      <span>Update Rate/Leader</span>
-                    </button>
+                {/* Dropdown details content */}
+                {isExpanded && (
+                  <div className="px-5 pb-5 pt-1.5 border-t border-slate-50 dark:border-slate-805/40 bg-slate-50/50 dark:bg-slate-950/10 space-y-4 animate-in slide-in-from-top-2 duration-150-all">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2">
+                      <div className="flex items-start space-x-3">
+                        <Users className="h-4.5 w-4.5 text-clinic-green-650 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <span className="block text-[10px] font-bold text-slate-400 uppercase">Assigned Co-Leaders</span>
+                          <span className="font-semibold text-slate-600 dark:text-slate-350 leading-relaxed block">
+                            {getCoLeadersList(group.CoLeaderIDs)}
+                          </span>
+                        </div>
+                      </div>
 
-                    <button
-                      onClick={() => handleRetireGroup(group)}
-                      title="Decommission Group"
-                      className="p-1 px-3.5 bg-red-50 hover:bg-red-100 text-red-650 font-bold text-[11px] rounded-lg flex items-center space-x-1 border border-red-200 transition-all cursor-pointer"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      <span>Retire</span>
-                    </button>
+                      <div className="flex items-start space-x-3">
+                        <Calendar className="h-4.5 w-4.5 text-slate-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <span className="block text-[10px] font-bold text-slate-400 uppercase font-mono">Commission Start Date</span>
+                          <span className="font-medium text-slate-600 dark:text-slate-400 block pb-1">
+                            {group.StartDate}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action buttons list */}
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-805/60 flex justify-end space-x-2 animate-in fade-in duration-200">
+                      <button
+                        onClick={() => openEditModal(group)}
+                        title="Update parameters or rates"
+                        className="p-1 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 text-slate-700 dark:text-slate-350 font-bold text-[11px] rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                        <span>Update Assignment</span>
+                      </button>
+
+                      {isActive && (
+                        <button
+                          onClick={() => handleRetireGroup(group)}
+                          title="Decommission Group"
+                          className="p-1 px-3.5 bg-red-50 hover:bg-red-100/80 text-red-650 font-bold text-[11px] rounded-lg border border-red-200 flex items-center space-x-1.5 transition-all cursor-pointer"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span>Retire Group</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
             );
           })}
           {groups.length === 0 && (
-            <div className="col-span-2 text-center p-12 bg-slate-50 dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl">
+            <div className="text-center p-12 bg-slate-50 dark:bg-slate-900 border-none w-full">
               <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
               <p className="text-xs text-slate-500 font-bold">No clinic segments setup. Create a group above.</p>
             </div>
@@ -347,6 +370,37 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
               {formError && (
                 <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300 text-xs border border-red-100 dark:border-red-900 rounded-xl">
                   {formError}
+                </div>
+              )}
+
+              {/* Dropdown preset template selector */}
+              {!editingGroup && (
+                <div className="bg-slate-50 dark:bg-slate-950 p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1">
+                  <label className="block text-[10px] font-bold text-clinic-blue-600 dark:text-clinic-blue-400 uppercase tracking-wider mb-1">
+                    Select Approved Designated Group *
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      const found = designatedGroups.find(dg => dg.DesignatedID === selectedId);
+                      if (found) {
+                        setGroupName(found.GroupName);
+                        setGroupCode(found.GroupCode);
+                      }
+                    }}
+                    value={designatedGroups.find(dg => dg.GroupName === groupName && dg.GroupCode === groupCode)?.DesignatedID || ''}
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg text-xs text-slate-850 dark:text-white focus:outline-none"
+                  >
+                    <option value="">-- Choose Approved Pre-set Group Template --</option>
+                    {designatedGroups.map(dg => (
+                      <option key={dg.DesignatedID} value={dg.DesignatedID}>
+                        {dg.GroupName} ({dg.GroupCode})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[9px] text-slate-400">
+                    Sourced from the "Designated Groups" templates configured by admins.
+                  </p>
                 </div>
               )}
 

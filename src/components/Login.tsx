@@ -64,7 +64,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] dark:bg-slate-950 px-4 transition-colors duration-300">
       <div className="absolute top-4 left-4 flex items-center space-x-2 text-clinic-blue-600 no-print">
-        <Activity className="h-6 w-6" />
+        <img src="https://www.image2url.com/r2/default/images/1779782151932-e0fcc309-3ed7-4c15-a3fa-1859006492a3.png" alt="St. Francis Logo" className="h-6 w-6 object-contain" referrerPolicy="no-referrer" />
         <span className="font-sans font-bold text-lg tracking-tight">SAINT FRANCIS CLINIC</span>
       </div>
 
@@ -73,8 +73,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         <div className="absolute top-0 left-0 right-0 h-[4px] bg-clinic-blue-600" />
 
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center p-3 bg-clinic-blue-50 dark:bg-slate-800 rounded-full mb-3 text-clinic-blue-600">
-            <ShieldCheck className="h-8 w-8" />
+          <div className="inline-flex items-center justify-center p-2 bg-slate-50 dark:bg-slate-800 rounded-2xl mb-3 border border-slate-100 dark:border-slate-700 shadow-xs">
+            <img src="https://www.image2url.com/r2/default/images/1779782151932-e0fcc309-3ed7-4c15-a3fa-1859006492a3.png" alt="St. Francis Logo" className="h-16 w-16 object-contain" referrerPolicy="no-referrer" />
           </div>
           <h2 className="text-2xl font-bold font-heading text-slate-800 dark:text-slate-100">
             Employee Web Portal

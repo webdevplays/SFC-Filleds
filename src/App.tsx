@@ -7,6 +7,7 @@ import AdminDashboard from './components/AdminDashboard';
 import EmployeeDashboard from './components/EmployeeDashboard';
 import EmployeesPage from './components/EmployeesPage';
 import GroupsPage from './components/GroupsPage';
+import DesignatedGroupsPage from './components/DesignatedGroupsPage';
 import RecordsPage from './components/RecordsPage';
 import ActivityLogsPage from './components/ActivityLogsPage';
 import {
@@ -249,6 +250,9 @@ export default function App() {
               )}
               {activeTab === 'employees' && user.Position === 'Admin' && (
                 <EmployeesPage currentAdminId={user.EmployeeID} />
+              )}
+              {activeTab === 'designated-groups' && user.Position === 'Admin' && (
+                <DesignatedGroupsPage currentAdminId={user.EmployeeID} />
               )}
               {activeTab === 'groups' && user.Position === 'Admin' && (
                 <GroupsPage currentAdminId={user.EmployeeID} />
