@@ -415,6 +415,19 @@ const simulatedApi = {
     throw new Error('Group not found.');
   },
 
+  hardDeleteGroup: async (id: string, modifierId: string) => {
+    const groups = getLocalItem<Group>(STORAGE_KEYS.GROUPS, DEFAULT_GROUPS);
+    const idx = groups.findIndex(g => g.GroupID === id);
+    if (idx !== -1) {
+      const deletedName = groups[idx].GroupName;
+      groups.splice(idx, 1);
+      setLocalItem(STORAGE_KEYS.GROUPS, groups);
+      addLocalLog(modifierId, `Permanently hard deleted group: ${deletedName}`);
+      return { success: true };
+    }
+    throw new Error('Group not found.');
+  },
+
   getRecords: async (userId?: string) => {
     const records = getLocalItem<ClinicRecord>(STORAGE_KEYS.RECORDS, DEFAULT_RECORDS);
     if (userId) {
@@ -787,6 +800,12 @@ export const api = {
     withFallback(
       () => apiRequest(`/api/groups/${id}`, 'DELETE', undefined, modifierId),
       () => simulatedApi.deleteGroup(id, modifierId)
+    ),
+
+  hardDeleteGroup: (id: string, modifierId: string) => 
+    withFallback(
+      () => apiRequest(`/api/groups/${id}/permanent`, 'DELETE', undefined, modifierId),
+      () => simulatedApi.hardDeleteGroup(id, modifierId)
     ),
 
   // Records

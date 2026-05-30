@@ -184,6 +184,20 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
     }
   };
 
+  const handleHardDeleteGroup = async (grp: Group) => {
+    if (!confirm(`Are you sure you want to PERMANENTLY delete group "${grp.GroupName}"? All survey information associated with this group will remain, but this group itself will be completely erased from the system selection. This action is irreversible.`)) {
+      return;
+    }
+    try {
+      const res = await api.hardDeleteGroup(grp.GroupID, currentAdminId);
+      if (res.success) {
+        loadData();
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error occurred while permanently deleting group.');
+    }
+  };
+
   // Helpers to get Names
   const getLeaderName = (id: string) => {
     const leader = employees.find(e => e.EmployeeID === id);
@@ -324,12 +338,21 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
                         <button
                           onClick={() => handleRetireGroup(group)}
                           title="Decommission Group"
-                          className="p-1 px-3.5 bg-red-50 hover:bg-red-100/80 text-red-650 font-bold text-[11px] rounded-lg border border-red-200 flex items-center space-x-1.5 transition-all cursor-pointer"
+                          className="p-1 px-3.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-[11px] rounded-lg border border-amber-200 flex items-center space-x-1.5 transition-all cursor-pointer"
                         >
                           <Trash2 className="h-3 w-3" />
                           <span>Retire Group</span>
                         </button>
                       )}
+
+                      <button
+                        onClick={() => handleHardDeleteGroup(group)}
+                        title="Permanently Delete Group"
+                        className="p-1 px-3.5 bg-red-50 hover:bg-red-100/80 text-red-655 font-bold text-[11px] rounded-lg border border-red-200 flex items-center space-x-1.5 transition-all cursor-pointer"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        <span>Delete Group</span>
+                      </button>
                     </div>
                   </div>
                 )}

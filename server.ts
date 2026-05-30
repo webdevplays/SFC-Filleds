@@ -423,6 +423,32 @@ async function startServer() {
     }
   });
 
+  // Permanently Hard Delete Group
+  app.delete('/api/groups/:id/permanent', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const modifier = req.headers['x-user-id'] as string || 'Admin';
+
+      const groups = await getGroups();
+      const idx = groups.findIndex(g => g.GroupID === id);
+
+      if (idx === -1) {
+        return res.status(404).json({ success: false, message: 'Group not found.' });
+      }
+
+      const deletedGroupName = groups[idx].GroupName;
+      groups.splice(idx, 1);
+      await saveGroups(groups);
+
+      await addLog(modifier, `Permanently deleted group: ${deletedGroupName}`);
+      await addNotification(modifier, 'Group Deleted Permanently', `Group ${deletedGroupName} was deleted by Admin.`, 'error');
+
+      res.json({ success: true, message: 'Group deleted permanently.' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
   /**
    * ==========================================
    * DESIGNATED GROUP PRESETS (ADMIN TEMPLATES)
