@@ -1,0 +1,6 @@
+{
+  "name": "Saint Francis Clinic Records Management",
+  "description": "Employee Group Records Management System for Saint Francis Clinic, featuring secure login, role-based records submission, and real-time dashboard analytics linked with Google Sheets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
