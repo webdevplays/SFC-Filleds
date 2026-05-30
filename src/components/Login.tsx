@@ -50,7 +50,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       const res = await api.verifyPin(username, pinCode);
       if (res.success) {
         // Save to local state and trigger callback
-        onLoginSuccess(res.user);
+        onLoginSuccess(res.user || res.employee);
       } else {
         setError(res.message || 'Invalid PIN Code entered.');
       }

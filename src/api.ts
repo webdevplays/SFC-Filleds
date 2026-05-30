@@ -276,7 +276,7 @@ const simulatedApi = {
     }
 
     const { PINCode: _pin, ...safeEmployee } = employee;
-    return { success: true, employee: safeEmployee };
+    return { success: true, user: safeEmployee, employee: safeEmployee };
   },
 
   getEmployees: async () => {
