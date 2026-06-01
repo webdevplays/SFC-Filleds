@@ -45,12 +45,8 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
 
   // Profile settings states
   const [newUsername, setNewUsername] = useState(user.Username);
-  const [newPincode, setNewPincode] = useState('');
-  const [confirmPincode, setConfirmPincode] = useState('');
   const [settingsStatus, setSettingsStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
-  const [showPincodeInput, setShowPincodeInput] = useState(false);
-  const [showConfirmPincodeInput, setShowConfirmPincodeInput] = useState(false);
   const [attemptedSubmitSettings, setAttemptedSubmitSettings] = useState(false);
 
   // Load user data
@@ -170,17 +166,7 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
     setSettingsStatus(null);
 
     if (!newUsername.trim()) {
-      setSettingsStatus({ type: 'error', message: 'Username cannot be empty.' });
-      return;
-    }
-
-    if (newPincode && newPincode !== confirmPincode) {
-      setSettingsStatus({ type: 'error', message: 'New PIN Codes do not match.' });
-      return;
-    }
-
-    if (newPincode && !/^\d{4,8}$/.test(newPincode)) {
-      setSettingsStatus({ type: 'error', message: 'PIN Code must be a numeric value containing between 4 and 8 digits.' });
+      setSettingsStatus({ type: 'error', message: 'Unique ID cannot be empty.' });
       return;
     }
 
@@ -189,15 +175,10 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
       const payload: Partial<Employee> = {
         Username: newUsername.trim()
       };
-      if (newPincode) {
-        payload.PINCode = newPincode;
-      }
 
       const res = await api.updateEmployee(user.EmployeeID, payload, user.EmployeeID);
       if (res.success) {
         setSettingsStatus({ type: 'success', message: 'Account settings updated successfully!' });
-        setNewPincode('');
-        setConfirmPincode('');
         setAttemptedSubmitSettings(false);
         if (onUserUpdate) {
           onUserUpdate(res.employee);
@@ -487,80 +468,21 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
                   )}
 
                   <div>
-                    <label className={`block text-[10px] font-medium mb-1 ${attemptedSubmitSettings && !newUsername.trim() ? 'text-red-500' : 'text-slate-500'}`}>Username</label>
+                    <label className={`block text-[10px] font-semibold uppercase text-slate-500 mb-1.5 ${attemptedSubmitSettings && !newUsername.trim() ? 'text-red-500' : 'text-slate-500'}`}>Unique ID</label>
                     <input
                       type="text"
                       required
                       value={newUsername}
                       onChange={(e) => setNewUsername(e.target.value)}
-                      className={`w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-950 border text-xs rounded-xl focus:outline-none dark:text-white ${
+                      className={`w-full px-3 py-2 bg-slate-50 dark:bg-slate-955 border text-xs rounded-xl focus:outline-none dark:text-white ${
                         attemptedSubmitSettings && !newUsername.trim()
                           ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
                           : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
                       }`}
-                      placeholder="Enter username"
+                      placeholder="Enter Unique ID"
                     />
                     {attemptedSubmitSettings && !newUsername.trim() && (
-                      <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a valid username.</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2 pt-1">
-                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Change PIN Code</span>
-                    <p className="text-[10px] text-slate-500 leading-normal">
-                      Leave blank if you do not want to change your PIN.
-                    </p>
-                    
-                    <div>
-                      <label className={`block text-[10px] font-medium mb-1 ${attemptedSubmitSettings && newPincode && (!/^\d{4,8}$/.test(newPincode) || newPincode !== confirmPincode) ? 'text-red-500' : 'text-slate-500'}`}>New PIN Code (4-8 digits)</label>
-                      <div className="relative">
-                        <input
-                          type={showPincodeInput ? "text" : "password"}
-                          maxLength={8}
-                          value={newPincode}
-                          onChange={(e) => setNewPincode(e.target.value.replace(/\D/g, ''))}
-                          className={`w-full pl-3 pr-8 py-1.5 bg-slate-50 dark:bg-slate-950 border text-xs rounded-xl focus:outline-none dark:text-white font-mono tracking-widest ${
-                            attemptedSubmitSettings && newPincode && (!/^\d{4,8}$/.test(newPincode) || newPincode !== confirmPincode)
-                              ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
-                              : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
-                          }`}
-                          placeholder="••••"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPincodeInput(!showPincodeInput)}
-                          className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                        >
-                          {showPincodeInput ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    {newPincode.length > 0 && (
-                      <div className="animate-in slide-in-from-top-1 duration-150">
-                        <label className={`block text-[10px] font-medium mb-1 ${attemptedSubmitSettings && newPincode !== confirmPincode ? 'text-red-500' : 'text-slate-500'}`}>Confirm New PIN Code</label>
-                        <div className="relative">
-                          <input
-                            type={showConfirmPincodeInput ? "text" : "password"}
-                            maxLength={8}
-                            value={confirmPincode}
-                            onChange={(e) => setConfirmPincode(e.target.value.replace(/\D/g, ''))}
-                            className={`w-full pl-3 pr-8 py-1.5 bg-slate-50 dark:bg-slate-950 border text-xs rounded-xl focus:outline-none dark:text-white font-mono tracking-widest ${
-                              attemptedSubmitSettings && newPincode !== confirmPincode
-                                ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
-                                : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
-                            }`}
-                            placeholder="••••"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowConfirmPincodeInput(!showConfirmPincodeInput)}
-                            className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                          >
-                            {showConfirmPincodeInput ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                          </button>
-                        </div>
-                      </div>
+                      <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a valid Unique ID.</p>
                     )}
                   </div>
 
@@ -568,7 +490,7 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
                     type="submit"
                     id="btn-update-profile-settings"
                     disabled={savingSettings}
-                    className="w-full py-1.5 px-3 bg-slate-900 hover:bg-slate-850 dark:bg-slate-800 dark:hover:bg-slate-755 text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-all cursor-pointer shadow-sm mt-3"
+                    className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-850 dark:bg-slate-800 dark:hover:bg-slate-755 text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-all cursor-pointer shadow-sm mt-3"
                   >
                     {savingSettings ? (
                       <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />

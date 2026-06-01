@@ -106,7 +106,6 @@ export default function ActivityLogsPage() {
               <thead className="bg-slate-50 dark:bg-slate-950/45 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                 <tr>
                   <th className="px-6 py-4">Track ID</th>
-                  <th className="px-6 py-4">Auth Signee Role</th>
                   <th className="px-6 py-4">Recorded Action / Event</th>
                   <th className="px-6 py-4">IP Node</th>
                   <th className="px-6 py-4">Execution Timestamp</th>
@@ -116,11 +115,6 @@ export default function ActivityLogsPage() {
                 {filteredLogs.map((log) => (
                   <tr key={log.LogID} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/20">
                     <td className="px-6 py-4 font-mono text-clinic-blue-600 font-semibold">{log.LogID}</td>
-                    <td className="px-6 py-4">
-                      <span className="bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-350 font-mono px-2 py-0.5 rounded uppercase font-bold text-[10px]">
-                        {log.UserID}
-                      </span>
-                    </td>
                     <td className="px-6 py-4 text-slate-700 dark:text-slate-300 font-medium">{log.Activity}</td>
                     <td className="px-6 py-4 font-mono text-slate-400">{log.IPAddress}</td>
                     <td className="px-6 py-4 text-slate-500 font-mono text-[10px]">
@@ -130,7 +124,7 @@ export default function ActivityLogsPage() {
                 ))}
                 {filteredLogs.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-slate-400">
+                    <td colSpan={4} className="px-6 py-10 text-center text-slate-400">
                       No security audit records match specified searches.
                     </td>
                   </tr>

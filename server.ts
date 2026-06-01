@@ -46,21 +46,22 @@ async function startServer() {
    * ==========================================
    */
 
-  // Step 1: Verify Username
+  // Step 1: Verify Username (Unique ID Login)
   app.post('/api/auth/verify-username', async (req, res) => {
     try {
       const { username } = req.body;
       if (!username) {
-        return res.status(400).json({ success: false, message: 'Username is required.' });
+        return res.status(400).json({ success: false, message: 'Unique ID is required.' });
       }
 
       const employees = await getEmployees();
       const employee = employees.find(
-        (e) => e.Username.toLowerCase() === username.trim().toLowerCase()
+        (e) => e.Username.toLowerCase() === username.trim().toLowerCase() ||
+               e.EmployeeID.toLowerCase() === username.trim().toLowerCase()
       );
 
       if (!employee) {
-        return res.status(404).json({ success: false, message: 'Employee username not found.' });
+        return res.status(404).json({ success: false, message: 'Employee Unique ID not found.' });
       }
 
       if (employee.Status === 'Suspended') {
@@ -77,9 +78,18 @@ async function startServer() {
         });
       }
 
+      // Record Activity Log
+      const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+      await addLog(employee.Username, `Dashboard Login successful with Unique ID ${username.trim()} (Session Created)`, ip);
+
       // Hide the PIN for Step 1
       const { PINCode, ...safeEmployee } = employee;
-      res.json({ success: true, employee: safeEmployee });
+      res.json({
+        success: true,
+        employee: safeEmployee,
+        user: safeEmployee,
+        token: `token-${employee.EmployeeID}-${Date.now().toString().slice(-4)}`
+      });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
     }
@@ -145,18 +155,18 @@ async function startServer() {
   // Create standard employee
   app.post('/api/employees', async (req, res) => {
     try {
-      const { FullName, Username, PINCode, Position, ContactNumber, Address } = req.body;
+      const { FullName, Username, Position, ContactNumber, Address } = req.body;
       const creator = req.headers['x-user-id'] as string || 'Admin';
 
-      if (!FullName || !Username || !PINCode || !Position) {
-        return res.status(400).json({ success: false, message: 'Required fields missing: FullName, Username, PINCode, Position.' });
+      if (!FullName || !Username || !Position) {
+        return res.status(400).json({ success: false, message: 'Required fields missing: FullName, Username, Position.' });
       }
 
       const employees = await getEmployees();
 
       // Check username collision
       if (employees.some(e => e.Username.toLowerCase() === Username.trim().toLowerCase())) {
-        return res.status(400).json({ success: false, message: 'Username is already taken by another employee.' });
+        return res.status(400).json({ success: false, message: 'Unique ID is already taken by another employee.' });
       }
 
       // Generate next EmployeeID
@@ -170,7 +180,7 @@ async function startServer() {
         EmployeeID,
         FullName: FullName.trim(),
         Username: Username.trim(),
-        PINCode: PINCode.trim(),
+        PINCode: 'N/A',
         Position: Position as any,
         Status: 'Active',
         ContactNumber: ContactNumber || '',

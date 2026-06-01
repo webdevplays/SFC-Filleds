@@ -78,7 +78,7 @@ export default function Sidebar({
     // Admin Only tabs
     {
       id: 'employees',
-      label: 'Employee Logins',
+      label: 'Add Employee List',
       icon: Users,
       allowed: ['Admin'],
     },

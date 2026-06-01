@@ -11,6 +11,7 @@ import DesignatedGroupsPage from './components/DesignatedGroupsPage';
 import BarangaysPage from './components/BarangaysPage';
 import RecordsPage from './components/RecordsPage';
 import ActivityLogsPage from './components/ActivityLogsPage';
+import SettingsModal from './components/SettingsModal';
 import {
   Bell,
   Sun,
@@ -21,7 +22,8 @@ import {
   Activity,
   CheckCircle,
   Menu,
-  ChevronDown
+  ChevronDown,
+  Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -38,6 +40,7 @@ export default function App() {
   // Notifications State
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   // Restore authenticated session
   useEffect(() => {
@@ -243,6 +246,17 @@ export default function App() {
           </div>
 
           <div className="flex items-center space-x-4">
+            {user && user.Position === 'Admin' && (
+              <button
+                onClick={() => setIsSettingsModalOpen(true)}
+                className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-950 rounded-xl transition-all cursor-pointer"
+                title="System Customization & API Server Settings"
+                id="header-settings-btn"
+              >
+                <Settings className="h-4.5 w-4.5" />
+              </button>
+            )}
+
             {/* Notifications panel dropdown trigger */}
             <div className="relative">
               <button
@@ -379,6 +393,17 @@ export default function App() {
           <div>© 2026 Saint Francis Clinic CRM • Build 2.1.0</div>
         </footer>
       </div>
+
+      {isSettingsModalOpen && (
+        <SettingsModal
+          settings={settings}
+          onClose={() => setIsSettingsModalOpen(false)}
+          onSave={(updated) => {
+            setSettings(updated);
+            setIsSettingsModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

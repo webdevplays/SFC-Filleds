@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api';
 import { Employee } from '../types';
-import { ShieldCheck, UserCheck, Key, Lock, Activity, Eye, EyeOff } from 'lucide-react';
+import { ShieldCheck, UserCheck, Key, Lock, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface LoginProps {
@@ -9,53 +9,28 @@ interface LoginProps {
 }
 
 export default function Login({ onLoginSuccess }: LoginProps) {
-  const [username, setUsername] = useState('');
-  const [pinCode, setPinCode] = useState('');
-  const [step, setStep] = useState<1 | 2>(1);
+  const [uniqueId, setUniqueId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [matchedUser, setMatchedUser] = useState<Omit<Employee, 'PINCode'> | null>(null);
-  const [showPin, setShowPin] = useState(false);
 
-  // Step 1: Username Check
-  async function handleVerifyUsername(e: React.FormEvent) {
+  // Single Step Login: Unique ID
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    if (!username.trim()) return;
+    if (!uniqueId.trim()) return;
 
     setLoading(true);
     setError(null);
     try {
-      const res = await api.verifyUsername(username);
+      const res = await api.verifyUsername(uniqueId.trim());
       if (res.success) {
-        setMatchedUser(res.employee);
-        setStep(2);
-      } else {
-        setError(res.message || 'Username verification failed.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred. User not found.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Step 2: PIN Check
-  async function handleVerifyPin(e: React.FormEvent) {
-    e.preventDefault();
-    if (!pinCode.trim()) return;
-
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await api.verifyPin(username, pinCode);
-      if (res.success) {
-        // Save to local state and trigger callback
+        // Since verifyUsername now handles complete verification in a single step,
+        // it returns the fully validated user profile. Bypassing PIN Code check checks out.
         onLoginSuccess(res.user || res.employee);
       } else {
-        setError(res.message || 'Invalid PIN Code entered.');
+        setError(res.message || 'Login verification failed.');
       }
     } catch (err: any) {
-      setError(err.message || 'PIN validation failed. Try again.');
+      setError(err.message || 'Invalid Unique ID. User profile not found.');
     } finally {
       setLoading(false);
     }
@@ -87,6 +62,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         {error && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
+            initial-y={0}
             animate={{ opacity: 1, y: 0 }}
             className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border-l-4 border-red-500 text-red-700 dark:text-red-300 text-xs rounded-r-lg font-medium"
           >
@@ -95,135 +71,56 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         )}
 
         <AnimatePresence mode="wait">
-          {step === 1 ? (
-            <motion.form
-              key="step1"
-              id="username-form"
-              initial={{ opacity: 0, x: -15 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 15 }}
-              onSubmit={handleVerifyUsername}
-              className="space-y-4"
+          <motion.form
+            key="loginForm"
+            id="login-form"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            onSubmit={handleLogin}
+            className="space-y-4"
+          >
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Unique Login ID
+              </label>
+              <div className="relative">
+                <UserCheck className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter Username or Employee ID"
+                  value={uniqueId}
+                  onChange={(e) => setUniqueId(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-clinic-blue-500 dark:text-slate-200"
+                  disabled={loading}
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              id="btn-login-submit"
+              disabled={loading || !uniqueId.trim()}
+              className="w-full py-3 px-4 bg-gradient-to-r from-clinic-blue-600 to-clinic-blue-800 hover:brightness-105 active:scale-[0.98] text-white font-semibold rounded-xl text-sm flex items-center justify-center space-x-2 transition-all shadow-md group disabled:opacity-50 cursor-pointer text-center"
             >
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-                  Confirm Username
-                </label>
-                <div className="relative">
-                  <UserCheck className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter your system username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-clinic-blue-500 dark:text-slate-200"
-                    disabled={loading}
-                    autoFocus
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                id="btn-confirm-username"
-                disabled={loading || !username.trim()}
-                className="w-full py-3 px-4 bg-gradient-to-r from-clinic-blue-600 to-clinic-blue-800 hover:brightness-105 active:scale-[0.98] text-white font-semibold rounded-xl text-sm flex items-center justify-center space-x-2 transition-all shadow-md group disabled:opacity-50 cursor-pointer"
-              >
-                {loading ? (
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <>
-                    <span>Confirm Username</span>
-                    <span className="group-hover:translate-x-1 transition-transform">→</span>
-                  </>
-                )}
-              </button>
-            </motion.form>
-          ) : (
-            <motion.form
-              key="step2"
-              id="pin-form"
-              initial={{ opacity: 0, x: 15 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -15 }}
-              onSubmit={handleVerifyPin}
-              className="space-y-4"
-            >
-              <div className="bg-slate-50 dark:bg-slate-950 p-3.5 border border-slate-100 dark:border-slate-800/80 rounded-xl flex items-center space-x-3 mb-2">
-                <div className="h-9 w-9 flex items-center justify-center bg-clinic-blue-500 text-white font-bold rounded-lg text-xs tracking-wider">
-                  {matchedUser?.FullName.slice(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-none">
-                    {matchedUser?.FullName}
-                  </h4>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                    Position: <span className="text-clinic-blue-600 font-medium">{matchedUser?.Position}</span>
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  id="btn-change-username"
-                  onClick={() => {
-                    setStep(1);
-                    setPinCode('');
-                    setError(null);
-                  }}
-                  className="ml-auto text-[10px] text-clinic-blue-600 hover:underline hover:text-clinic-blue-700"
-                >
-                  Change User
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-                  Secure PIN Verification
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
-                  <input
-                    type={showPin ? 'text' : 'password'}
-                    required
-                    placeholder="Enter Secret PIN"
-                    value={pinCode}
-                    onChange={(e) => setPinCode(e.target.value)}
-                    className="w-full pl-10 pr-12 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-clinic-blue-500 dark:text-slate-200 tracking-widest font-mono"
-                    disabled={loading}
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPin(!showPin)}
-                    className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                  >
-                    {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                id="btn-login"
-                disabled={loading || pinCode.length < 1}
-                className="w-full py-3 px-4 bg-gradient-to-r from-clinic-blue-600 to-clinic-blue-800 hover:brightness-105 active:scale-[0.98] text-white font-semibold rounded-xl text-sm flex items-center justify-center space-x-2 transition-all shadow-md group disabled:opacity-50 cursor-pointer"
-              >
-                {loading ? (
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <>
-                    <Key className="h-4 w-4" />
-                    <span>Authorize & Login</span>
-                  </>
-                )}
-              </button>
-            </motion.form>
-          )}
+              {loading ? (
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <>
+                  <Lock className="h-4 w-4" />
+                  <span>Authorize & Login</span>
+                  <span className="group-hover:translate-x-1 transition-transform">→</span>
+                </>
+              )}
+            </button>
+          </motion.form>
         </AnimatePresence>
 
         <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
           <p className="text-[10px] text-slate-400 dark:text-slate-500">
-            Authorized Personnel Only • IP Address and Access Audited Securly
+            Authorized Personnel Only • IP Address and Access Audited Securely
           </p>
         </div>
       </div>

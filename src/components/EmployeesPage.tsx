@@ -46,7 +46,6 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
   // Form Fields
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
-  const [pinCode, setPinCode] = useState('');
   const [position, setPosition] = useState<EmployeePosition>('Leader');
   const [contactNumber, setContactNumber] = useState('');
   const [address, setAddress] = useState('');
@@ -80,7 +79,6 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
     setEditingEmployee(null);
     setFullName('');
     setUsername('');
-    setPinCode('');
     setPosition('Leader');
     setContactNumber('');
     setAddress('');
@@ -94,7 +92,6 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
     setEditingEmployee(emp);
     setFullName(emp.FullName);
     setUsername(emp.Username);
-    setPinCode(emp.PINCode);
     setPosition(emp.Position);
     setContactNumber(emp.ContactNumber);
     setAddress(emp.Address || '');
@@ -108,8 +105,8 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
   const handleSaveEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     setAttemptedSubmit(true);
-    if (!fullName.trim() || !username.trim() || !pinCode.trim() || !address) {
-      setFormError('FullName, Username, PIN Code, and Resident Address (Barangay) are mandatory fields.');
+    if (!fullName.trim() || !username.trim() || !address) {
+      setFormError('FullName, Unique ID, and Resident Address (Barangay) are mandatory fields.');
       return;
     }
 
@@ -123,7 +120,7 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
           {
             FullName: fullName,
             Username: username,
-            PINCode: pinCode,
+            PINCode: 'N/A',
             Position: position,
             ContactNumber: contactNumber,
             Status: status,
@@ -143,7 +140,7 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
           {
             FullName: fullName,
             Username: username,
-            PINCode: pinCode,
+            PINCode: 'N/A',
             Position: position,
             ContactNumber: contactNumber,
             Status: 'Active', // Default to active on creation
@@ -203,10 +200,10 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold font-heading text-slate-800 dark:text-slate-100">
-            Account Management & Verification
+            Add Employee List
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Register clinic field representatives, verify authorization PIN codes, or suspend system access.
+            Assign employees to a group with their designated barangays.
           </p>
         </div>
         <button
@@ -231,8 +228,7 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
                 <tr>
                   <th className="px-6 py-4">Employee ID</th>
                   <th className="px-6 py-4">Full Name</th>
-                  <th className="px-6 py-4">Username</th>
-                  <th className="px-6 py-4">PIN Code</th>
+                  <th className="px-6 py-4">Unique ID</th>
                   <th className="px-6 py-4">Position</th>
                   <th className="px-6 py-4">Contact</th>
                   <th className="px-6 py-4">Status</th>
@@ -257,15 +253,9 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
                       )}
                       <div className="text-[10px] text-slate-400 mt-1">Registered: {emp.CreatedDate}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono text-[11px] text-slate-600 dark:text-slate-350">
-                        {emp.Username}
-                      </span>
-                    </td>
                     <td className="px-6 py-4 font-mono select-all">
-                      <span className="flex items-center space-x-1 font-bold text-slate-700 dark:text-slate-300">
-                        <Key className="h-3 w-3 text-slate-400" />
-                        <span>{emp.PINCode}</span>
+                      <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-bold text-[11px] text-slate-600 dark:text-slate-350">
+                        {emp.Username}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -395,12 +385,12 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
 
               <div>
                 <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !username.trim() ? 'text-red-500' : 'text-slate-500'}`}>
-                  Username *
+                  Unique Login ID *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. jdoe"
+                  placeholder="e.g. jdoe123"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none ${
@@ -411,33 +401,10 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
                   disabled={editingEmployee !== null} // Lock username for consistency
                 />
                 {attemptedSubmit && !username.trim() && (
-                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter username.</p>
+                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a Unique Login ID.</p>
                 )}
-              </div>
-
-              <div>
-                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !pinCode.trim() ? 'text-red-500' : 'text-slate-500'}`}>
-                  Authorization PIN (Passcode) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  pattern="[0-9]*"
-                  maxLength={6}
-                  placeholder="e.g. 1234, 5555"
-                  value={pinCode}
-                  onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}
-                  className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white tracking-widest font-bold focus:outline-none ${
-                    attemptedSubmit && !pinCode.trim()
-                      ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
-                      : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
-                  }`}
-                />
-                {attemptedSubmit && !pinCode.trim() && (
-                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter passcode validation PIN.</p>
-                )}
-                {(!attemptedSubmit || pinCode.trim()) && (
-                  <span className="text-[10px] text-slate-400 mt-1 block">Specify numeric code used during login security validation check.</span>
+                {(!attemptedSubmit || username.trim()) && (
+                  <span className="text-[10px] text-slate-400 mt-1 block">Specify the Unique ID used for direct secure employee web portal access.</span>
                 )}
               </div>
 

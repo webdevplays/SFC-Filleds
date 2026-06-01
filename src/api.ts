@@ -20,7 +20,8 @@ export async function apiRequest(endpoint: string, method: string = 'GET', body?
     options.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, options);
+  const resolvedBaseUrl = (typeof window !== 'undefined' ? localStorage.getItem('sfc_api_server_url') : '') || '';
+  const response = await fetch(`${resolvedBaseUrl}${endpoint}`, options);
   if (!response.ok) {
     const errData = await response.json().catch(() => ({}));
     throw new Error(errData.message || `API error: ${response.status}`);
@@ -227,11 +228,14 @@ const DEFAULT_BARANGAYS: Barangay[] = [
 let useLocalDB = false;
 if (typeof window !== 'undefined') {
   const host = window.location.hostname;
+  const customApiUrl = localStorage.getItem('sfc_api_server_url');
   if (
-    host.includes('netlify.app') || 
-    host.includes('netlify') || 
-    host.includes('github.io') || 
-    host.includes('vercel.app') ||
+    (!customApiUrl && (
+      host.includes('netlify.app') || 
+      host.includes('netlify') || 
+      host.includes('github.io') || 
+      host.includes('vercel.app')
+    )) ||
     localStorage.getItem('force_local_db') === 'true'
   ) {
     useLocalDB = true;
@@ -298,11 +302,12 @@ const simulatedApi = {
   verifyUsername: async (username: string) => {
     const employees = getLocalItem<Employee>(STORAGE_KEYS.EMPLOYEES, DEFAULT_EMPLOYEES);
     const employee = employees.find(
-      (e) => e.Username.toLowerCase() === username.trim().toLowerCase()
+      (e) => e.Username.toLowerCase() === username.trim().toLowerCase() ||
+             e.EmployeeID.toLowerCase() === username.trim().toLowerCase()
     );
 
     if (!employee) {
-      throw new Error('Employee username not found.');
+      throw new Error('Employee Unique ID not found.');
     }
 
     if (employee.Status === 'Suspended') {
@@ -313,22 +318,21 @@ const simulatedApi = {
       throw new Error('Your account access has been revoked.');
     }
 
+    addLocalLog(employee.Username, `Dashboard Login successful with Unique ID (Simulated Session)`);
+
     const { PINCode, ...safeEmployee } = employee;
-    return { success: true, employee: safeEmployee };
+    return { success: true, employee: safeEmployee, user: safeEmployee };
   },
 
   verifyPin: async (username: string, pinCode: string) => {
     const employees = getLocalItem<Employee>(STORAGE_KEYS.EMPLOYEES, DEFAULT_EMPLOYEES);
     const employee = employees.find(
-      (e) => e.Username.toLowerCase() === username.trim().toLowerCase()
+      (e) => e.Username.toLowerCase() === username.trim().toLowerCase() ||
+             e.EmployeeID.toLowerCase() === username.trim().toLowerCase()
     );
 
     if (!employee) {
       throw new Error('Employee not found.');
-    }
-
-    if (employee.PINCode !== pinCode) {
-      throw new Error('Invalid PIN Code. Please check the credentials and try again.');
     }
 
     if (employee.Status !== 'Active') {
@@ -350,7 +354,7 @@ const simulatedApi = {
       EmployeeID: newId,
       FullName: data.FullName || '',
       Username: data.Username || '',
-      PINCode: data.PINCode || '1234',
+      PINCode: data.PINCode || 'N/A',
       Position: data.Position || 'Co-Leader',
       Status: 'Active',
       ContactNumber: data.ContactNumber || '',
