@@ -88,3 +88,13 @@ export interface Barangay {
   CreatedDate: string;
 }
 
+export interface SystemSettings {
+  WebsiteTitle: string;
+  WebsiteLogo: string;
+  FaviconTitle: string;
+  FaviconLogo: string;
+  SEODescription: string;
+  SEOKeywords: string;
+}
+
+

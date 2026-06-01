@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Employee, Notification } from './types';
+import { Employee, Notification, SystemSettings } from './types';
 import { api } from './api';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
@@ -32,6 +32,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
+  // Dynamic branding configuration settings
+  const [settings, setSettings] = useState<SystemSettings | null>(null);
+
   // Notifications State
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
@@ -56,6 +59,83 @@ export default function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
+  }, []);
+
+  // Load and apply system branding/SEO settings dynamically
+  useEffect(() => {
+    const applySystemSettings = async () => {
+      try {
+        const res = await api.getSystemSettings();
+        if (res) {
+          setSettings(res);
+          // 1. Update document title
+          if (res.FaviconTitle) {
+            document.title = res.FaviconTitle;
+          }
+          // 2. Set favicon links
+          if (res.FaviconLogo) {
+            let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+            if (!link) {
+              link = document.createElement('link');
+              link.rel = 'icon';
+              document.getElementsByTagName('head')[0].appendChild(link);
+            }
+            link.href = res.FaviconLogo;
+          }
+          // 3. Set SEO meta description and keywords
+          let descriptionMeta: HTMLMetaElement | null = document.querySelector("meta[name='description']");
+          if (!descriptionMeta) {
+            descriptionMeta = document.createElement('meta');
+            descriptionMeta.name = 'description';
+            document.getElementsByTagName('head')[0].appendChild(descriptionMeta);
+          }
+          if (res.SEODescription) {
+            descriptionMeta.content = res.SEODescription;
+          }
+
+          let keywordsMeta: HTMLMetaElement | null = document.querySelector("meta[name='keywords']");
+          if (!keywordsMeta) {
+            keywordsMeta = document.createElement('meta');
+            keywordsMeta.name = 'keywords';
+            document.getElementsByTagName('head')[0].appendChild(keywordsMeta);
+          }
+          if (res.SEOKeywords) {
+            keywordsMeta.content = res.SEOKeywords;
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching and applying system style config settings:', err);
+      }
+    };
+    applySystemSettings();
+
+    const handleSettingsUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<SystemSettings>;
+      setSettings(customEvent.detail);
+      
+      if (customEvent.detail.FaviconTitle) {
+        document.title = customEvent.detail.FaviconTitle;
+      }
+      if (customEvent.detail.FaviconLogo) {
+        let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+        if (link) {
+          link.href = customEvent.detail.FaviconLogo;
+        }
+      }
+      let descriptionMeta: HTMLMetaElement | null = document.querySelector("meta[name='description']");
+      if (descriptionMeta && customEvent.detail.SEODescription) {
+        descriptionMeta.content = customEvent.detail.SEODescription;
+      }
+      let keywordsMeta: HTMLMetaElement | null = document.querySelector("meta[name='keywords']");
+      if (keywordsMeta && customEvent.detail.SEOKeywords) {
+        keywordsMeta.content = customEvent.detail.SEOKeywords;
+      }
+    };
+
+    window.addEventListener('systemSettingsUpdated', handleSettingsUpdate);
+    return () => {
+      window.removeEventListener('systemSettingsUpdated', handleSettingsUpdate);
+    };
   }, []);
 
   // Sync theme changes
@@ -138,6 +218,7 @@ export default function App() {
         setDarkMode={setDarkMode}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        settings={settings}
       />
 
       {/* Main Workspace Frame */}

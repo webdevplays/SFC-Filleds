@@ -13,7 +13,8 @@ import {
   Layers,
   ArrowUpRight,
   PieChart as PieIcon,
-  RefreshCw
+  RefreshCw,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import {
   AreaChart,
@@ -27,11 +28,26 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
+import { SystemSettings } from '../types';
 
 export default function AdminDashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<any[]>([]);
+
+  // Website Branding & SEO Form States
+  const [settings, setSettings] = useState<SystemSettings>({
+    WebsiteTitle: '',
+    WebsiteLogo: '',
+    FaviconTitle: '',
+    FaviconLogo: '',
+    SEODescription: '',
+    SEOKeywords: ''
+  });
+  const [attemptedSubmitSettings, setAttemptedSubmitSettings] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSuccessMessage, setSettingsSuccessMessage] = useState('');
+  const [settingsErrorMessage, setSettingsErrorMessage] = useState('');
 
   const fetchAnalytics = async () => {
     setLoading(true);
@@ -40,6 +56,11 @@ export default function AdminDashboard() {
       setData(res);
       const activityLogs = await api.getLogs();
       setLogs(activityLogs.slice(0, 5)); // Keep latest 5
+
+      const sysSettings = await api.getSystemSettings();
+      if (sysSettings) {
+        setSettings(sysSettings);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -50,6 +71,63 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchAnalytics();
   }, []);
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAttemptedSubmitSettings(true);
+    setSettingsSuccessMessage('');
+    setSettingsErrorMessage('');
+
+    // Validation
+    if (
+      !settings.WebsiteTitle.trim() ||
+      !settings.WebsiteLogo.trim() ||
+      !settings.FaviconTitle.trim() ||
+      !settings.FaviconLogo.trim() ||
+      !settings.SEODescription.trim() ||
+      !settings.SEOKeywords.trim()
+    ) {
+      setSettingsErrorMessage('All settings fields are required. Please check highlighted inputs.');
+      return;
+    }
+
+    setSettingsSaving(true);
+    try {
+      const sessionUser = localStorage.getItem('sfc_user_session');
+      const modifierId = sessionUser ? JSON.parse(sessionUser).EmployeeID : 'Admin';
+      
+      const res = await api.updateSystemSettings(settings, modifierId);
+      if (res.success) {
+        setSettingsSuccessMessage('Branding and SEO configurations successfully updated! Reloading dynamic preferences...');
+        setAttemptedSubmitSettings(false);
+        
+        // Dynamically update page title, favicon links, and metas immediately!
+        document.title = settings.FaviconTitle;
+        let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+        if (link) {
+          link.href = settings.FaviconLogo;
+        }
+
+        let descriptionMeta: HTMLMetaElement | null = document.querySelector("meta[name='description']");
+        if (descriptionMeta) {
+          descriptionMeta.content = settings.SEODescription;
+        }
+
+        let keywordsMeta: HTMLMetaElement | null = document.querySelector("meta[name='keywords']");
+        if (keywordsMeta) {
+          keywordsMeta.content = settings.SEOKeywords;
+        }
+
+        // Emit dynamic event
+        window.dispatchEvent(new CustomEvent('systemSettingsUpdated', { detail: settings }));
+      }
+    } catch (err: any) {
+      console.error(err);
+      setSettingsErrorMessage(err.message || 'Error occurred while saving settings.');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -310,6 +388,189 @@ export default function AdminDashboard() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Dynamic Website Customization & SEO Control Panel */}
+      <div id="website-branding-settings" className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-8 rounded-2xl shadow-sm transition-colors duration-200">
+        <div className="flex items-center space-x-3 border-b border-slate-100 dark:border-slate-800 pb-5 mb-6">
+          <div className="p-3 bg-clinic-blue-50 dark:bg-slate-850 rounded-xl text-clinic-blue-600 dark:text-clinic-blue-400">
+            <SettingsIcon className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 font-heading">
+              Website Customization & SEO Configurations
+            </h2>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+              Live edit system branding labels, asset paths, header logos, tab favicons, and global search engine visibility parameters.
+            </p>
+          </div>
+        </div>
+
+        {settingsSuccessMessage && (
+          <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-950 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs font-semibold animate-in fade-in duration-200">
+            {settingsSuccessMessage}
+          </div>
+        )}
+
+        {settingsErrorMessage && (
+          <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-950 text-rose-700 dark:text-rose-400 rounded-xl text-xs font-semibold animate-in fade-in duration-200">
+            {settingsErrorMessage}
+          </div>
+        )}
+
+        <form onSubmit={handleSaveSettings} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Website Title */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wide mb-2.5">
+                Website Brand Title <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={settings.WebsiteTitle}
+                onChange={e => setSettings(prev => ({ ...prev, WebsiteTitle: e.target.value }))}
+                className={`w-full text-xs font-medium bg-slate-50 dark:bg-slate-950 border ${
+                  attemptedSubmitSettings && !settings.WebsiteTitle.trim()
+                    ? 'border-rose-500 ring-2 ring-rose-500/20'
+                    : 'border-slate-200 dark:border-slate-800/80'
+                } rounded-xl px-4 py-3.5 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-clinic-blue-500/20 focus:border-clinic-blue-500 transition-all`}
+                placeholder="e.g. Saint Francis Clinic"
+              />
+              {attemptedSubmitSettings && !settings.WebsiteTitle.trim() && (
+                <p className="text-[10px] text-rose-500 mt-1.5 font-bold uppercase tracking-wide">Website Title is required and cannot be empty!</p>
+              )}
+            </div>
+
+            {/* Favicon Title */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wide mb-2.5">
+                Favicon / Tab Title <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={settings.FaviconTitle}
+                onChange={e => setSettings(prev => ({ ...prev, FaviconTitle: e.target.value }))}
+                className={`w-full text-xs font-medium bg-slate-50 dark:bg-slate-950 border ${
+                  attemptedSubmitSettings && !settings.FaviconTitle.trim()
+                    ? 'border-rose-500 ring-2 ring-rose-500/20'
+                    : 'border-slate-200 dark:border-slate-800/80'
+                } rounded-xl px-4 py-3.5 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-clinic-blue-500/20 focus:border-clinic-blue-500 transition-all`}
+                placeholder="e.g. St. Francis Portal"
+              />
+              {attemptedSubmitSettings && !settings.FaviconTitle.trim() && (
+                <p className="text-[10px] text-rose-500 mt-1.5 font-bold uppercase tracking-wide">Favicon Title is required and cannot be empty!</p>
+              )}
+            </div>
+
+            {/* Website Logo URL */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wide mb-2.5">
+                Website Logo Link / URL <span className="text-rose-500">*</span>
+              </label>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={settings.WebsiteLogo}
+                  onChange={e => setSettings(prev => ({ ...prev, WebsiteLogo: e.target.value }))}
+                  className={`flex-1 text-xs font-medium bg-slate-50 dark:bg-slate-950 border ${
+                    attemptedSubmitSettings && !settings.WebsiteLogo.trim()
+                      ? 'border-rose-500 ring-2 ring-rose-500/20'
+                      : 'border-slate-200 dark:border-slate-800/80'
+                  } rounded-xl px-4 py-3.5 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-clinic-blue-500/20 focus:border-clinic-blue-500 transition-all`}
+                  placeholder="https://example.com/logo.png"
+                />
+                {settings.WebsiteLogo.trim() && (
+                  <div className="h-11 w-11 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center p-1.5 flex-shrink-0">
+                    <img src={settings.WebsiteLogo} alt="Logo Preview" className="max-h-full max-w-full object-contain" referrerPolicy="no-referrer" />
+                  </div>
+                )}
+              </div>
+              {attemptedSubmitSettings && !settings.WebsiteLogo.trim() && (
+                <p className="text-[10px] text-rose-500 mt-1.5 font-bold uppercase tracking-wide">Website Logo is required and cannot be empty!</p>
+              )}
+            </div>
+
+            {/* Favicon Logo URL */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wide mb-2.5">
+                Favicon / Icon Link / URL <span className="text-rose-500">*</span>
+              </label>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={settings.FaviconLogo}
+                  onChange={e => setSettings(prev => ({ ...prev, FaviconLogo: e.target.value }))}
+                  className={`flex-1 text-xs font-medium bg-slate-50 dark:bg-slate-950 border ${
+                    attemptedSubmitSettings && !settings.FaviconLogo.trim()
+                      ? 'border-rose-500 ring-2 ring-rose-500/20'
+                      : 'border-slate-200 dark:border-slate-800/80'
+                  } rounded-xl px-4 py-3.5 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-clinic-blue-500/20 focus:border-clinic-blue-500 transition-all`}
+                  placeholder="https://example.com/favicon.png"
+                />
+                {settings.FaviconLogo.trim() && (
+                  <div className="h-11 w-11 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center p-1.5 flex-shrink-0">
+                    <img src={settings.FaviconLogo} alt="Favicon Preview" className="max-h-full max-w-full object-contain" referrerPolicy="no-referrer" />
+                  </div>
+                )}
+              </div>
+              {attemptedSubmitSettings && !settings.FaviconLogo.trim() && (
+                <p className="text-[10px] text-rose-500 mt-1.5 font-bold uppercase tracking-wide">Favicon Logo URL is required and cannot be empty!</p>
+              )}
+            </div>
+
+            {/* SEO Meta Description */}
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wide mb-2.5">
+                SEO Search Engine Meta Description <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                value={settings.SEODescription}
+                onChange={e => setSettings(prev => ({ ...prev, SEODescription: e.target.value }))}
+                rows={3}
+                className={`w-full text-xs font-medium bg-slate-50 dark:bg-slate-950 border ${
+                  attemptedSubmitSettings && !settings.SEODescription.trim()
+                    ? 'border-rose-500 ring-2 ring-rose-500/20'
+                    : 'border-slate-200 dark:border-slate-800/80'
+                } rounded-xl px-4 py-3 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-clinic-blue-500/20 focus:border-clinic-blue-500 transition-all`}
+                placeholder="Summarize structural portal index descriptors for search engines..."
+              />
+              {attemptedSubmitSettings && !settings.SEODescription.trim() && (
+                <p className="text-[10px] text-rose-500 mt-1.5 font-bold uppercase tracking-wide">SEO Description is required and cannot be empty!</p>
+              )}
+            </div>
+
+            {/* SEO Meta Keywords */}
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wide mb-2.5">
+                SEO Meta Keywords (comma separated) <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={settings.SEOKeywords}
+                onChange={e => setSettings(prev => ({ ...prev, SEOKeywords: e.target.value }))}
+                className={`w-full text-xs font-medium bg-slate-50 dark:bg-slate-950 border ${
+                  attemptedSubmitSettings && !settings.SEOKeywords.trim()
+                     ? 'border-rose-500 ring-2 ring-rose-500/20'
+                     : 'border-slate-200 dark:border-slate-800/80'
+                } rounded-xl px-4 py-3.5 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-clinic-blue-500/20 focus:border-clinic-blue-500 transition-all`}
+                placeholder="clinic, audit, database, records, google sheets"
+              />
+              {attemptedSubmitSettings && !settings.SEOKeywords.trim() && (
+                <p className="text-[10px] text-rose-500 mt-1.5 font-bold uppercase tracking-wide">SEO Keywords are required and cannot be empty!</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end border-t border-slate-100 dark:border-slate-800 pt-5">
+            <button
+              type="submit"
+              disabled={settingsSaving}
+              className="px-6 py-3 bg-clinic-blue-600 hover:bg-clinic-blue-700 disabled:bg-clinic-blue-400 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+            >
+              {settingsSaving ? 'Saving Changes...' : 'Save Branding & SEO Configurations'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

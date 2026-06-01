@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Employee } from '../types';
+import { Employee, SystemSettings } from '../types';
 import {
   BarChart4,
   Users,
@@ -28,6 +28,7 @@ interface SidebarProps {
   setDarkMode: (value: boolean) => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
+  settings?: SystemSettings | null;
 }
 
 export default function Sidebar({
@@ -38,7 +39,8 @@ export default function Sidebar({
   darkMode,
   setDarkMode,
   isOpenMobile,
-  onCloseMobile
+  onCloseMobile,
+  settings
 }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('sfc_sidebar_collapsed') === 'true';
@@ -126,12 +128,16 @@ export default function Sidebar({
         {/* Brand Header */}
         <div className={`p-4.5 flex items-center border-b border-slate-100 dark:border-slate-800 transition-all ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
           <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center border border-slate-100 dark:border-slate-800 shadow-xs overflow-hidden flex-shrink-0">
-            <img src="https://www.image2url.com/r2/default/images/1779782151932-e0fcc309-3ed7-4c15-a3fa-1859006492a3.png" alt="St. Francis Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+            <img src={settings?.WebsiteLogo || "https://www.image2url.com/r2/default/images/1779782151932-e0fcc309-3ed7-4c15-a3fa-1859006492a3.png"} alt="Website Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
           </div>
           {!isCollapsed && (
-            <div className="animate-in fade-in duration-200 truncate">
-              <h1 className="text-xs font-bold text-slate-400 uppercase tracking-widest truncate">Saint Francis</h1>
-              <p className="text-sm font-bold text-clinic-blue-905 dark:text-clinic-blue-100 leading-tight truncate">Clinic RMS</p>
+            <div className="animate-in fade-in duration-200 truncate flex-1 min-w-0">
+              <h1 className="text-xs font-bold text-slate-400 uppercase tracking-widest truncate">
+                {settings?.WebsiteTitle ? settings.WebsiteTitle.split(' ')[0] : 'Saint Francis'}
+              </h1>
+              <p className="text-sm font-bold text-clinic-blue-905 dark:text-clinic-blue-100 leading-tight truncate">
+                {settings?.WebsiteTitle ? settings.WebsiteTitle.substring(settings.WebsiteTitle.split(' ')[0].length).trim() || 'Clinic RMS' : 'Clinic RMS'}
+              </p>
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { google } from 'googleapis';
-import { Employee, Group, ClinicRecord, ActivityLog, Notification, DesignatedGroup, Barangay } from '../src/types';
+import { Employee, Group, ClinicRecord, ActivityLog, Notification, DesignatedGroup, Barangay, SystemSettings } from '../src/types';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const EMPLOYEES_FILE = path.join(DATA_DIR, 'employees.json');
@@ -11,6 +11,7 @@ const LOGS_FILE = path.join(DATA_DIR, 'activity_logs.json');
 const NOTIFICATIONS_FILE = path.join(DATA_DIR, 'notifications.json');
 const DESIGNATED_GROUPS_FILE = path.join(DATA_DIR, 'designated_groups.json');
 const BARANGAYS_FILE = path.join(DATA_DIR, 'barangays.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -229,6 +230,16 @@ const DEFAULT_BARANGAYS: Barangay[] = [
 ];
 let localBarangays: Barangay[] = readJSON(BARANGAYS_FILE, DEFAULT_BARANGAYS);
 
+const DEFAULT_SETTINGS: SystemSettings = {
+  WebsiteTitle: "Saint Francis Clinic",
+  WebsiteLogo: "https://www.image2url.com/r2/default/images/1779782151932-e0fcc309-3ed7-4c15-a3fa-1859006492a3.png",
+  FaviconTitle: "Saint Francis Clinic",
+  FaviconLogo: "https://www.image2url.com/r2/default/images/1779782151932-e0fcc309-3ed7-4c15-a3fa-1859006492a3.png",
+  SEODescription: "Saint Francis Clinic - Employee Group Records Management System. Fast, structured field survey, population count, and payout logs.",
+  SEOKeywords: "saint francis clinic, field survey, records management, clinic logs, health system"
+};
+let localSettings: SystemSettings = readJSON(SETTINGS_FILE, DEFAULT_SETTINGS);
+
 /**
  * GOOGLE SHEETS API CONFIGURATION
  */
@@ -290,8 +301,10 @@ async function ensureSheetsAndHeaders() {
       { name: 'ActivityLogs', headers: ['LogID', 'UserID', 'Activity', 'DateTime', 'IPAddress'] },
       { name: 'Notifications', headers: ['NotificationID', 'TargetUserID', 'SourceUserID', 'Title', 'Message', 'Type', 'CreatedDate', 'IsRead'] },
       { name: 'DesignatedGroups', headers: ['DesignatedID', 'GroupName', 'GroupCode', 'Description', 'CreatedDate'] },
-      { name: 'Barangays', headers: ['BarangayID', 'Name', 'City', 'Description', 'CreatedDate'] }
+      { name: 'Barangays', headers: ['BarangayID', 'Name', 'City', 'Description', 'CreatedDate'] },
+      { name: 'Settings', headers: ['WebsiteTitle', 'WebsiteLogo', 'FaviconTitle', 'FaviconLogo', 'SEODescription', 'SEOKeywords'] }
     ];
+
 
     for (const item of sheetsToCreate) {
       if (!existingSheets.includes(item.name)) {
@@ -327,7 +340,10 @@ async function ensureSheetsAndHeaders() {
           await syncDesignatedGroupsToSheets(DEFAULT_DESIGNATED_GROUPS, sheets, spreadsheetId);
         } else if (item.name === 'Barangays') {
           await syncBarangaysToSheets(DEFAULT_BARANGAYS, sheets, spreadsheetId);
+        } else if (item.name === 'Settings') {
+          await syncSettingsToSheets(DEFAULT_SETTINGS, sheets, spreadsheetId);
         }
+
       }
     }
     console.log('Google Sheets structure and authorization successfully validated!');
@@ -347,7 +363,21 @@ ensureSheetsAndHeaders()
 /**
  * PRIVATE SYNCHRONIZATION UTILITIES FOR GOOGLE SHEETS FOR EACH COLLECTION (WRITE ONLY)
  */
+async function syncSettingsToSheets(settings: SystemSettings, sheets: any, spreadsheetId: string) {
+  const values = [
+    ['WebsiteTitle', 'WebsiteLogo', 'FaviconTitle', 'FaviconLogo', 'SEODescription', 'SEOKeywords'],
+    [settings.WebsiteTitle, settings.WebsiteLogo, settings.FaviconTitle, settings.FaviconLogo, settings.SEODescription, settings.SEOKeywords]
+  ];
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: 'Settings!A1:F2',
+    valueInputOption: 'RAW',
+    requestBody: { values }
+  });
+}
+
 async function syncEmployeesToSheets(employees: Employee[], sheets: any, spreadsheetId: string) {
+
   const values = [
     ['EmployeeID', 'FullName', 'Username', 'PINCode', 'Position', 'Status', 'ContactNumber', 'CreatedDate'],
     ...employees.map(e => [e.EmployeeID, e.FullName, e.Username, e.PINCode, e.Position, e.Status, e.ContactNumber, e.CreatedDate])
@@ -838,3 +868,47 @@ export async function saveBarangays(list: Barangay[]): Promise<void> {
     }
   }
 }
+
+export async function getSystemSettings(): Promise<SystemSettings> {
+  const client = getSheetsClient();
+  if (!client) {
+    return localSettings;
+  }
+  const { sheets, spreadsheetId } = client;
+  try {
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'Settings!A2:F2' });
+    const rows = response.data.values || [];
+    if (rows.length > 0) {
+      const r = rows[0];
+      localSettings = {
+        WebsiteTitle: r[0] || DEFAULT_SETTINGS.WebsiteTitle,
+        WebsiteLogo: r[1] || DEFAULT_SETTINGS.WebsiteLogo,
+        FaviconTitle: r[2] || DEFAULT_SETTINGS.FaviconTitle,
+        FaviconLogo: r[3] || DEFAULT_SETTINGS.FaviconLogo,
+        SEODescription: r[4] || DEFAULT_SETTINGS.SEODescription,
+        SEOKeywords: r[5] || DEFAULT_SETTINGS.SEOKeywords
+      };
+      writeJSON(SETTINGS_FILE, localSettings);
+    }
+    return localSettings;
+  } catch (error) {
+    console.error('Google Sheets read failed for Settings, falling back to local database.', error);
+    return localSettings;
+  }
+}
+
+export async function saveSystemSettings(settings: SystemSettings): Promise<void> {
+  localSettings = settings;
+  writeJSON(SETTINGS_FILE, localSettings);
+
+  const client = getSheetsClient();
+  if (client) {
+    const { sheets, spreadsheetId } = client;
+    try {
+      await syncSettingsToSheets(settings, sheets, spreadsheetId);
+    } catch (e) {
+      console.error('Sync to Google Sheets failed for Settings.', e);
+    }
+  }
+}
+

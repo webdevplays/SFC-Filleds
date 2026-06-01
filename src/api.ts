@@ -1,4 +1,4 @@
-import { Employee, Group, ClinicRecord, ActivityLog, Notification, DesignatedGroup, Barangay } from './types';
+import { Employee, Group, ClinicRecord, ActivityLog, Notification, DesignatedGroup, Barangay, SystemSettings } from './types';
 
 const BASE_URL = '';
 
@@ -214,6 +214,7 @@ const STORAGE_KEYS = {
   NOTIFICATIONS: 'st_francis_notifications',
   DESIGNATED_GROUPS: 'st_francis_designated_groups',
   BARANGAYS: 'st_francis_barangays',
+  SETTINGS: 'st_francis_settings',
 };
 
 const DEFAULT_BARANGAYS: Barangay[] = [
@@ -797,6 +798,34 @@ const simulatedApi = {
     }
     throw new Error('Barangay not found.');
   },
+
+  getSystemSettings: async () => {
+    const defaultSettings: SystemSettings = {
+      WebsiteTitle: "Saint Francis Clinic",
+      WebsiteLogo: "https://www.image2url.com/r2/default/images/1779782151932-e0fcc309-3ed7-4c15-a3fa-1859006492a3.png",
+      FaviconTitle: "Saint Francis Clinic",
+      FaviconLogo: "https://www.image2url.com/r2/default/images/1779782151932-e0fcc309-3ed7-4c15-a3fa-1859006492a3.png",
+      SEODescription: "Saint Francis Clinic - Employee Group Records Management System. Fast, structured field survey, population count, and payout logs.",
+      SEOKeywords: "saint francis clinic, field survey, records management, clinic logs, health system"
+    };
+    if (typeof window === 'undefined') return defaultSettings;
+    const item = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    if (!item) {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(defaultSettings));
+      return defaultSettings;
+    }
+    try {
+      return JSON.parse(item) as SystemSettings;
+    } catch {
+      return defaultSettings;
+    }
+  },
+
+  updateSystemSettings: async (settings: SystemSettings, modifierId: string) => {
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    addLocalLog(modifierId, `Updated system settings (branding/SEO) directly in simulated database.`);
+    return { success: true, settings };
+  }
 };
 
 function isStaticError(error: any): boolean {
@@ -1010,5 +1039,18 @@ export const api = {
     withFallback(
       () => apiRequest(`/api/barangays/${id}`, 'DELETE', undefined, modifierId),
       () => simulatedApi.deleteBarangay(id, modifierId)
+    ),
+
+  // System Settings
+  getSystemSettings: () =>
+    withFallback(
+      () => apiRequest('/api/settings'),
+      () => simulatedApi.getSystemSettings()
+    ),
+
+  updateSystemSettings: (settings: SystemSettings, modifierId: string) =>
+    withFallback(
+      () => apiRequest('/api/settings', 'PUT', settings, modifierId),
+      () => simulatedApi.updateSystemSettings(settings, modifierId)
     )
 };

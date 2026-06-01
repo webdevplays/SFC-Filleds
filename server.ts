@@ -17,9 +17,11 @@ import {
   getDesignatedGroups,
   saveDesignatedGroups,
   getBarangays,
-  saveBarangays
+  saveBarangays,
+  getSystemSettings,
+  saveSystemSettings
 } from './server/db';
-import { Employee, Group, ClinicRecord, DesignatedGroup, Barangay } from './src/types';
+import { Employee, Group, ClinicRecord, DesignatedGroup, Barangay, SystemSettings } from './src/types';
 
 async function startServer() {
   const app = express();
@@ -1034,6 +1036,46 @@ async function startServer() {
     try {
       await clearLogs();
       res.json({ success: true, message: 'All system logs permanently cleared.' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Get system branding and SEO settings
+  app.get('/api/settings', async (req, res) => {
+    try {
+      const settings = await getSystemSettings();
+      res.json(settings);
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Update system branding and SEO settings (Admin Only)
+  app.put('/api/settings', async (req, res) => {
+    try {
+      const modifier = req.headers['x-user-id'] as string || 'Admin';
+      const { WebsiteTitle, WebsiteLogo, FaviconTitle, FaviconLogo, SEODescription, SEOKeywords } = req.body;
+      
+      const updatedSettings: SystemSettings = {
+        WebsiteTitle: WebsiteTitle !== undefined ? WebsiteTitle.trim() : "Saint Francis Clinic",
+        WebsiteLogo: WebsiteLogo !== undefined ? WebsiteLogo.trim() : "https://www.image2url.com/r2/default/images/1779782151932-e0fcc309-3ed7-4c15-a3fa-1859006492a3.png",
+        FaviconTitle: FaviconTitle !== undefined ? FaviconTitle.trim() : "Saint Francis Clinic",
+        FaviconLogo: FaviconLogo !== undefined ? FaviconLogo.trim() : "https://www.image2url.com/r2/default/images/1779782151932-e0fcc309-3ed7-4c15-a3fa-1859006492a3.png",
+        SEODescription: SEODescription !== undefined ? SEODescription.trim() : "",
+        SEOKeywords: SEOKeywords !== undefined ? SEOKeywords.trim() : ""
+      };
+
+      await saveSystemSettings(updatedSettings);
+      await addLog(modifier, `Updated core system settings branding and SEO configuration`);
+      await addNotification(
+        modifier,
+        'System Settings Updated',
+        `Dynamic website branding & SEO settings successfully revised by Admin.`,
+        'success'
+      );
+
+      res.json({ success: true, settings: updatedSettings });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
     }
