@@ -288,7 +288,9 @@ async function ensureSheetsAndHeaders() {
       { name: 'Groups', headers: ['GroupID', 'GroupName', 'GroupCode', 'LeaderID', 'CoLeaderIDs', 'PayoutRate', 'StartDate', 'Status'] },
       { name: 'Records', headers: ['RecordID', 'GroupID', 'LeaderID', 'HouseNumber', 'PersonCount', 'PayoutRate', 'TotalPayout', 'Remarks', 'CreatedDate', 'IsPaid', 'PaidDate'] },
       { name: 'ActivityLogs', headers: ['LogID', 'UserID', 'Activity', 'DateTime', 'IPAddress'] },
-      { name: 'Notifications', headers: ['NotificationID', 'TargetUserID', 'SourceUserID', 'Title', 'Message', 'Type', 'CreatedDate', 'IsRead'] }
+      { name: 'Notifications', headers: ['NotificationID', 'TargetUserID', 'SourceUserID', 'Title', 'Message', 'Type', 'CreatedDate', 'IsRead'] },
+      { name: 'DesignatedGroups', headers: ['DesignatedID', 'GroupName', 'GroupCode', 'Description', 'CreatedDate'] },
+      { name: 'Barangays', headers: ['BarangayID', 'Name', 'City', 'Description', 'CreatedDate'] }
     ];
 
     for (const item of sheetsToCreate) {
@@ -321,6 +323,10 @@ async function ensureSheetsAndHeaders() {
           await syncLogsToSheets(DEFAULT_LOGS, sheets, spreadsheetId);
         } else if (item.name === 'Notifications') {
           await syncNotificationsToSheets(DEFAULT_NOTIFICATIONS, sheets, spreadsheetId);
+        } else if (item.name === 'DesignatedGroups') {
+          await syncDesignatedGroupsToSheets(DEFAULT_DESIGNATED_GROUPS, sheets, spreadsheetId);
+        } else if (item.name === 'Barangays') {
+          await syncBarangaysToSheets(DEFAULT_BARANGAYS, sheets, spreadsheetId);
         }
       }
     }
@@ -413,6 +419,32 @@ async function syncNotificationsToSheets(notifs: Notification[], sheets: any, sp
   await sheets.spreadsheets.values.update({
     spreadsheetId,
     range: 'Notifications!A1:H10000',
+    valueInputOption: 'RAW',
+    requestBody: { values }
+  });
+}
+
+async function syncDesignatedGroupsToSheets(groups: DesignatedGroup[], sheets: any, spreadsheetId: string) {
+  const values = [
+    ['DesignatedID', 'GroupName', 'GroupCode', 'Description', 'CreatedDate'],
+    ...groups.map(g => [g.DesignatedID, g.GroupName, g.GroupCode, g.Description || '', g.CreatedDate])
+  ];
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: 'DesignatedGroups!A1:E1000',
+    valueInputOption: 'RAW',
+    requestBody: { values }
+  });
+}
+
+async function syncBarangaysToSheets(list: Barangay[], sheets: any, spreadsheetId: string) {
+  const values = [
+    ['BarangayID', 'Name', 'City', 'Description', 'CreatedDate'],
+    ...list.map(b => [b.BarangayID, b.Name, b.City || '', b.Description || '', b.CreatedDate])
+  ];
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: 'Barangays!A1:E1000',
     valueInputOption: 'RAW',
     requestBody: { values }
   });
@@ -703,19 +735,87 @@ export async function addNotification(
 }
 
 export async function getDesignatedGroups(): Promise<DesignatedGroup[]> {
-  return localDesignatedGroups;
+  const client = getSheetsClient();
+  if (!client) {
+    return localDesignatedGroups;
+  }
+  const { sheets, spreadsheetId } = client;
+  try {
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'DesignatedGroups!A2:E1000' });
+    const rows = response.data.values || [];
+    const list: DesignatedGroup[] = rows.map(r => ({
+      DesignatedID: r[0] || '',
+      GroupName: r[1] || '',
+      GroupCode: r[2] || '',
+      Description: r[3] || '',
+      CreatedDate: r[4] || ''
+    })).filter(g => g.DesignatedID);
+
+    if (list.length > 0) {
+      localDesignatedGroups = list;
+      writeJSON(DESIGNATED_GROUPS_FILE, localDesignatedGroups);
+    }
+    return localDesignatedGroups;
+  } catch (error) {
+    console.error('Google Sheets read failed for DesignatedGroups, falling back to local database.', error);
+    return localDesignatedGroups;
+  }
 }
 
 export async function saveDesignatedGroups(groups: DesignatedGroup[]): Promise<void> {
   localDesignatedGroups = groups;
   writeJSON(DESIGNATED_GROUPS_FILE, localDesignatedGroups);
+
+  const client = getSheetsClient();
+  if (client) {
+    const { sheets, spreadsheetId } = client;
+    try {
+      await syncDesignatedGroupsToSheets(groups, sheets, spreadsheetId);
+    } catch (e) {
+      console.error('Sync to Google Sheets failed for DesignatedGroups.', e);
+    }
+  }
 }
 
 export async function getBarangays(): Promise<Barangay[]> {
-  return localBarangays;
+  const client = getSheetsClient();
+  if (!client) {
+    return localBarangays;
+  }
+  const { sheets, spreadsheetId } = client;
+  try {
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'Barangays!A2:E1000' });
+    const rows = response.data.values || [];
+    const list: Barangay[] = rows.map(r => ({
+      BarangayID: r[0] || '',
+      Name: r[1] || '',
+      City: r[2] || '',
+      Description: r[3] || '',
+      CreatedDate: r[4] || ''
+    })).filter(b => b.BarangayID);
+
+    if (list.length > 0) {
+      localBarangays = list;
+      writeJSON(BARANGAYS_FILE, localBarangays);
+    }
+    return localBarangays;
+  } catch (error) {
+    console.error('Google Sheets read failed for Barangays, falling back to local database.', error);
+    return localBarangays;
+  }
 }
 
 export async function saveBarangays(list: Barangay[]): Promise<void> {
   localBarangays = list;
   writeJSON(BARANGAYS_FILE, localBarangays);
+
+  const client = getSheetsClient();
+  if (client) {
+    const { sheets, spreadsheetId } = client;
+    try {
+      await syncBarangaysToSheets(list, sheets, spreadsheetId);
+    } catch (e) {
+      console.error('Sync to Google Sheets failed for Barangays.', e);
+    }
+  }
 }

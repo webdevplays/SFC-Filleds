@@ -59,6 +59,7 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
   const [updating, setUpdating] = useState(false);
 
   // Admin add survey states
+  const [selectedRecordIDs, setSelectedRecordIDs] = useState<string[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addSelectedGroupId, setAddSelectedGroupId] = useState('');
   const [addPersonCount, setAddPersonCount] = useState<number>(1);
@@ -147,7 +148,8 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
 
   useEffect(() => {
     loadData();
-  }, [user.EmployeeID]);
+    setSelectedRecordIDs([]);
+  }, [user.EmployeeID, isPaid]);
 
   // Handle Edit Trigger
   const handleOpenEdit = (rec: ClinicRecord) => {
@@ -257,6 +259,43 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
     return matchesSearch && matchesGroup && matchesEmployee && matchesDate;
   });
 
+  const allSelected = filteredRecords.length > 0 && filteredRecords.every(r => selectedRecordIDs.includes(r.RecordID));
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedRecordIDs([]);
+    } else {
+      setSelectedRecordIDs(filteredRecords.map(r => r.RecordID));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedRecordIDs(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteSelectedPaid = async () => {
+    if (selectedRecordIDs.length === 0) return;
+    const confirmDelete = window.confirm(
+      `Are you sure you want to permanently delete the ${selectedRecordIDs.length} selected paid survey record(s)? This action cannot be undone.`
+    );
+    if (!confirmDelete) return;
+
+    setLoading(true);
+    try {
+      for (const id of selectedRecordIDs) {
+        await api.deleteRecord(id, user.EmployeeID);
+      }
+      setSelectedRecordIDs([]);
+      await loadData();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to delete some records.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Export functions
   const handleExportCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
@@ -342,6 +381,17 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
 
         {/* Exports Panel */}
         <div className="flex gap-2.5">
+          {isAdmin && isPaid && selectedRecordIDs.length > 0 && (
+            <button
+              onClick={handleDeleteSelectedPaid}
+              className="px-3.5 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:brightness-105 active:scale-[0.98] text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all shadow-md shadow-red-500/15 cursor-pointer no-print animate-in zoom-in-95 duration-100"
+              id="admin-btn-delete-selected-paid"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Delete Selected ({selectedRecordIDs.length})</span>
+            </button>
+          )}
+
           {isAdmin && !isPaid && (
             <button
               onClick={() => {
@@ -435,7 +485,7 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
             placeholder={isPaid ? "Search paid record logs by group code, barangay name, or date..." : "Search active surveys by group leader, or date (YYYY-MM-DD)..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-2 bg-slate-50 dark:bg-slate-955 border border-slate-205 dark:border-slate-804 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
+            className="w-full pl-11 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
           />
         </div>
 
@@ -511,6 +561,16 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-950/45 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                 <tr>
+                  {isAdmin && isPaid && (
+                    <th className="px-4 py-4 w-10 text-center no-print">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={toggleSelectAll}
+                        className="h-4 w-4 rounded border-slate-300 dark:border-slate-800 text-clinic-blue-600 focus:ring-clinic-blue-500 cursor-pointer"
+                      />
+                    </th>
+                  )}
                   <th className="px-6 py-4 no-print">Survey Code ID</th>
                   <th className="px-6 py-4 uppercase">
                     <span className="print:hidden">Group/Barangay Name</span>
@@ -528,8 +588,19 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
                 {filteredRecords.map((rec) => {
                   const g = groups.find(grp => grp.GroupID === rec.GroupID);
                   const isOwnRecord = rec.LeaderID === user.EmployeeID;
+                  const isSelected = selectedRecordIDs.includes(rec.RecordID);
                   return (
-                    <tr key={rec.RecordID} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/20">
+                    <tr key={rec.RecordID} className={`hover:bg-slate-50/40 dark:hover:bg-slate-950/20 ${isSelected ? 'bg-slate-50 dark:bg-slate-900/40' : ''}`}>
+                      {isAdmin && isPaid && (
+                        <td className="px-4 py-4 text-center no-print">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectOne(rec.RecordID)}
+                            className="h-4 w-4 rounded border-slate-300 dark:border-slate-800 text-clinic-blue-600 focus:ring-clinic-blue-500 cursor-pointer"
+                          />
+                        </td>
+                      )}
                       <td className="px-6 py-4 font-mono font-bold text-clinic-blue-600 no-print">{rec.RecordID}</td>
                       <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-250 truncate max-w-sm">
                         {getGroupName(rec.GroupID)}
@@ -581,7 +652,7 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
                 })}
                 {filteredRecords.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center text-slate-400">
+                    <td colSpan={isAdmin && isPaid ? 10 : 9} className="px-6 py-12 text-center text-slate-400">
                       No matching field survey records found inside specified filters.
                     </td>
                   </tr>
