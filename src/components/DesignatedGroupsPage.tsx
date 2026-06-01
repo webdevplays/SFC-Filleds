@@ -28,9 +28,51 @@ export default function DesignatedGroupsPage({ currentAdminId }: DesignatedGroup
   const [groupName, setGroupName] = useState('');
   const [groupCode, setGroupCode] = useState('');
   const [description, setDescription] = useState('');
+  const [isManualCode, setIsManualCode] = useState(false);
   
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const generateGroupCode = (name: string): string => {
+    if (!name) return '';
+    const words = name.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return '';
+    
+    let initials = words
+      .map(word => {
+        const firstChar = word.replace(/[^A-Za-z0-9]/g, '').slice(0, 1);
+        return firstChar;
+      })
+      .join('')
+      .toUpperCase();
+
+    if (initials.length < 2 && name.trim().length >= 3) {
+      initials = name.trim().replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase();
+    }
+
+    const prefix = initials || 'GRP';
+    let maxNum = 0;
+    for (const dg of designatedGroups) {
+      if (editingItem && dg.DesignatedID === editingItem.DesignatedID) continue;
+      const match = dg.GroupCode.match(new RegExp(`^${prefix}-(\\d+)`));
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+    const nextNum = maxNum + 1;
+    const suffix = nextNum < 10 ? `0${nextNum}` : `${nextNum}`;
+    return `${prefix}-${suffix}`;
+  };
+
+  const handleGroupNameChange = (val: string) => {
+    setGroupName(val);
+    if (!isManualCode && !editingItem) {
+      setGroupCode(generateGroupCode(val));
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -53,6 +95,7 @@ export default function DesignatedGroupsPage({ currentAdminId }: DesignatedGroup
     setGroupName('');
     setGroupCode('');
     setDescription('');
+    setIsManualCode(false);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -62,6 +105,7 @@ export default function DesignatedGroupsPage({ currentAdminId }: DesignatedGroup
     setGroupName(item.GroupName);
     setGroupCode(item.GroupCode);
     setDescription(item.Description || '');
+    setIsManualCode(true);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -268,7 +312,7 @@ export default function DesignatedGroupsPage({ currentAdminId }: DesignatedGroup
                   required
                   placeholder="e.g. Barangay San Juan Field Team"
                   value={groupName}
-                  onChange={(e) => setGroupName(e.target.value)}
+                  onChange={(e) => handleGroupNameChange(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
                 />
               </div>
@@ -280,7 +324,10 @@ export default function DesignatedGroupsPage({ currentAdminId }: DesignatedGroup
                   required
                   placeholder="e.g. BSJ-01"
                   value={groupCode}
-                  onChange={(e) => setGroupCode(e.target.value)}
+                  onChange={(e) => {
+                    setGroupCode(e.target.value);
+                    setIsManualCode(true);
+                  }}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white uppercase focus:outline-none"
                 />
               </div>
