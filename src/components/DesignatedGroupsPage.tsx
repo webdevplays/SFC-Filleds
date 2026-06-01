@@ -32,6 +32,7 @@ export default function DesignatedGroupsPage({ currentAdminId }: DesignatedGroup
   
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   const generateGroupCode = (name: string): string => {
     if (!name) return '';
@@ -97,6 +98,7 @@ export default function DesignatedGroupsPage({ currentAdminId }: DesignatedGroup
     setDescription('');
     setIsManualCode(false);
     setFormError(null);
+    setAttemptedSubmit(false);
     setIsModalOpen(true);
   };
 
@@ -107,11 +109,13 @@ export default function DesignatedGroupsPage({ currentAdminId }: DesignatedGroup
     setDescription(item.Description || '');
     setIsManualCode(true);
     setFormError(null);
+    setAttemptedSubmit(false);
     setIsModalOpen(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAttemptedSubmit(true);
     if (!groupName.trim() || !groupCode.trim()) {
       setFormError('Group Name and Group Code are required fields.');
       return;
@@ -298,7 +302,7 @@ export default function DesignatedGroupsPage({ currentAdminId }: DesignatedGroup
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSave} className="p-6 space-y-4">
+            <form noValidate onSubmit={handleSave} className="p-6 space-y-4">
               {formError && (
                 <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300 text-xs border border-red-100 dark:border-red-900 rounded-xl">
                   {formError}
@@ -306,19 +310,30 @@ export default function DesignatedGroupsPage({ currentAdminId }: DesignatedGroup
               )}
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Group Name *</label>
+                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !groupName.trim() ? 'text-red-500' : 'text-slate-500'}`}>
+                  Group Name *
+                </label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Barangay San Juan Field Team"
                   value={groupName}
                   onChange={(e) => handleGroupNameChange(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
+                  className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none ${
+                    attemptedSubmit && !groupName.trim()
+                      ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
+                      : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                  }`}
                 />
+                {attemptedSubmit && !groupName.trim() && (
+                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a group name.</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Group Code *</label>
+                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !groupCode.trim() ? 'text-red-500' : 'text-slate-500'}`}>
+                  Group Code *
+                </label>
                 <input
                   type="text"
                   required
@@ -328,8 +343,15 @@ export default function DesignatedGroupsPage({ currentAdminId }: DesignatedGroup
                     setGroupCode(e.target.value);
                     setIsManualCode(true);
                   }}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white uppercase focus:outline-none"
+                  className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white uppercase focus:outline-none ${
+                    attemptedSubmit && !groupCode.trim()
+                      ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
+                      : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                  }`}
                 />
+                {attemptedSubmit && !groupCode.trim() && (
+                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a group code.</p>
+                )}
               </div>
 
               <div>

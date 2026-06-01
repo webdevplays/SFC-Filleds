@@ -59,6 +59,7 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
 
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -106,6 +107,7 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
     setStartDate(new Date().toISOString().split('T')[0]);
     setGroupStatus('Active');
     setFormError(null);
+    setAttemptedSubmit(false);
     setIsModalOpen(true);
   };
 
@@ -120,6 +122,7 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
     setStartDate(grp.StartDate);
     setGroupStatus(grp.Status);
     setFormError(null);
+    setAttemptedSubmit(false);
     setIsModalOpen(true);
   };
 
@@ -134,6 +137,7 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
 
   const handleSaveGroup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAttemptedSubmit(true);
     if (!groupName.trim() || !groupCode.trim() || payoutRate === undefined || !leaderId || !address) {
       setFormError('Required fields are Group Name, Group Code, Payout Rate, Leader Assignment, and Operational Barangay Address.');
       return;
@@ -429,10 +433,8 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
               >
                 <X className="h-4.5 w-4.5" />
               </button>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSaveGroup} className="p-6 space-y-4">
+            </div>            {/* Form */}
+            <form noValidate onSubmit={handleSaveGroup} className="p-6 space-y-4">
               {formError && (
                 <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300 text-xs border border-red-100 dark:border-red-900 rounded-xl">
                   {formError}
@@ -442,8 +444,11 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
               {/* Dropdown preset template selector */}
               {!editingGroup && (
                 <div className="bg-slate-50 dark:bg-slate-950 p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1">
-                  <label className="block text-[10px] font-bold text-clinic-blue-600 dark:text-clinic-blue-400 uppercase tracking-wider mb-1">
-                    Select Approved Designated Group *
+                  <label className="block text-[10px] font-bold text-clinic-blue-600 dark:text-clinic-blue-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>Select Approved Designated Group Shortcut</span>
+                    {attemptedSubmit && !groupName.trim() && (
+                      <span className="text-red-500 font-medium lowercase">Required details are empty</span>
+                    )}
                   </label>
                   <select
                     onChange={(e) => {
@@ -469,7 +474,11 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
                       }
                     }}
                     value={designatedGroups.find(dg => dg.GroupName === groupName && dg.GroupCode === groupCode)?.DesignatedID || ''}
-                    className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg text-xs text-slate-850 dark:text-white focus:outline-none"
+                    className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-lg text-xs text-slate-850 dark:text-white focus:outline-none ${
+                      attemptedSubmit && (!groupName.trim() || !groupCode.trim())
+                        ? 'border-red-300 dark:border-red-900 focus:ring-1.5 focus:ring-red-500'
+                        : 'border-slate-200 dark:border-slate-850 focus:ring-1.5 focus:ring-clinic-blue-500'
+                    }`}
                   >
                     <option value="">-- Choose Approved Pre-set Group Template --</option>
                     {designatedGroups.map(dg => (
@@ -486,34 +495,54 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Group Name *</label>
+                  <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !groupName.trim() ? 'text-red-500 dark:text-red-400' : 'text-slate-500'}`}>
+                    Group Name *
+                  </label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Barangay San Jose B"
                     value={groupName}
                     onChange={(e) => setGroupName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
+                    className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none ${
+                      attemptedSubmit && !groupName.trim()
+                        ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 dark:border-red-500 ring-red-500'
+                        : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                    }`}
                   />
+                  {attemptedSubmit && !groupName.trim() && (
+                    <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a group name.</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Group Code *</label>
+                  <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !groupCode.trim() ? 'text-red-500 dark:text-red-400' : 'text-slate-500'}`}>
+                    Group Code *
+                  </label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. BSJ-02"
                     value={groupCode}
                     onChange={(e) => setGroupCode(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white uppercase focus:outline-none"
+                    className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white uppercase focus:outline-none ${
+                      attemptedSubmit && !groupCode.trim()
+                        ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 dark:border-red-500 ring-red-500'
+                        : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                    }`}
                     disabled={editingGroup !== null}
                   />
+                  {attemptedSubmit && !groupCode.trim() && (
+                    <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a group code.</p>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Assigned Payout Rate (PHP per person) *</label>
+                  <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && (!payoutRate || payoutRate <= 0) ? 'text-red-500 dark:text-red-400' : 'text-slate-500'}`}>
+                    Payout Rate (PHP per person) *
+                  </label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-3 text-xs font-bold text-slate-400">₱</span>
                     <input
@@ -523,18 +552,31 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
                       placeholder="e.g. 50"
                       value={payoutRate}
                       onChange={(e) => setPayoutRate(Math.max(1, parseFloat(e.target.value) || 0))}
-                      className="w-full pl-8 pr-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-850 dark:text-white focus:outline-none"
+                      className={`w-full pl-8 pr-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs font-semibold text-slate-850 dark:text-white focus:outline-none ${
+                        attemptedSubmit && (!payoutRate || payoutRate <= 0)
+                          ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 dark:border-red-500 ring-red-500'
+                          : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                      }`}
                     />
                   </div>
+                  {attemptedSubmit && (!payoutRate || payoutRate <= 0) && (
+                    <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a valid payout rate.</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Nominated Leader *</label>
+                  <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !leaderId ? 'text-red-500 dark:text-red-400' : 'text-slate-500'}`}>
+                    Nominated Leader *
+                  </label>
                   <select
                     required
                     value={leaderId}
                     onChange={(e) => setLeaderId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
+                    className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none ${
+                      attemptedSubmit && !leaderId
+                        ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 dark:border-red-500'
+                        : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                    }`}
                   >
                     <option value="" disabled>-- Nominate Survey Leader --</option>
                     {leadersList.map(l => (
@@ -544,19 +586,31 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
                       <option disabled>No active staff qualified as Leader</option>
                     )}
                   </select>
+                  {attemptedSubmit && !leaderId && (
+                    <p className="text-[10px] text-red-500 mt-1 font-medium">Please select a nominated leader.</p>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Commission Start Date</label>
+                  <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !startDate ? 'text-red-500 dark:text-red-400' : 'text-slate-500'}`}>
+                    Commission Start Date *
+                  </label>
                   <input
                     type="date"
                     required
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-mono text-slate-800 dark:text-white focus:outline-none"
+                    className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs font-mono text-slate-800 dark:text-white focus:outline-none ${
+                      attemptedSubmit && !startDate
+                        ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 dark:border-red-500'
+                        : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                    }`}
                   />
+                  {attemptedSubmit && !startDate && (
+                    <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a start date.</p>
+                  )}
                 </div>
 
                 {editingGroup ? (
@@ -573,12 +627,18 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Operational Barangay Address *</label>
+                    <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !address ? 'text-red-500 dark:text-red-400' : 'text-slate-500'}`}>
+                      Operational Barangay Address *
+                    </label>
                     <select
                       required
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none cursor-pointer"
+                      className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none cursor-pointer ${
+                        attemptedSubmit && !address
+                          ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 dark:border-red-500'
+                          : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                      }`}
                     >
                       <option value="" disabled>-- Select Address Barangay --</option>
                       {barangays.map(b => (
@@ -587,18 +647,27 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
                         </option>
                       ))}
                     </select>
+                    {attemptedSubmit && !address && (
+                      <p className="text-[10px] text-red-500 mt-1 font-medium">Please select a barangay address.</p>
+                    )}
                   </div>
                 )}
               </div>
 
               {editingGroup && (
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Operational Barangay Address *</label>
+                  <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !address ? 'text-red-500 dark:text-red-400' : 'text-slate-500'}`}>
+                    Operational Barangay Address *
+                  </label>
                   <select
                     required
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none cursor-pointer"
+                    className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none cursor-pointer ${
+                      attemptedSubmit && !address
+                        ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 dark:border-red-500'
+                        : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                    }`}
                   >
                     <option value="" disabled>-- Select Address Barangay --</option>
                     {barangays.map(b => (
@@ -607,6 +676,9 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
                       </option>
                     ))}
                   </select>
+                  {attemptedSubmit && !address && (
+                    <p className="text-[10px] text-red-500 mt-1 font-medium">Please select a barangay address.</p>
+                  )}
                 </div>
               )}
 

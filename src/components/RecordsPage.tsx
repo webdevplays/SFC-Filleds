@@ -57,6 +57,7 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
   const [editPersonCount, setEditPersonCount] = useState<number>(1);
   const [editRemarks, setEditRemarks] = useState('');
   const [updating, setUpdating] = useState(false);
+  const [attemptedSubmitEdit, setAttemptedSubmitEdit] = useState(false);
 
   // Admin add survey states
   const [selectedRecordIDs, setSelectedRecordIDs] = useState<string[]>([]);
@@ -66,10 +67,12 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
   const [addRemarks, setAddRemarks] = useState('');
   const [addingSurveyError, setAddingSurveyError] = useState<string | null>(null);
   const [addingSurvey, setAddingSurvey] = useState(false);
+  const [attemptedSubmitAdd, setAttemptedSubmitAdd] = useState(false);
 
   // Submit new survey (Admins)
   const handleAddSurvey = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAttemptedSubmitAdd(true);
     if (!addSelectedGroupId) return;
 
     const chosenGroup = groups.find(g => g.GroupID === addSelectedGroupId);
@@ -157,11 +160,13 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
     setEditHouseNo(rec.HouseNumber);
     setEditPersonCount(rec.PersonCount);
     setEditRemarks(rec.Remarks);
+    setAttemptedSubmitEdit(false);
     setIsEditModalOpen(true);
   };
 
   const handleUpdateRecord = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAttemptedSubmitEdit(true);
     if (!selectedRecord) return;
 
     setUpdating(true);
@@ -399,6 +404,7 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
                 setAddPersonCount(1);
                 setAddRemarks('');
                 setAddingSurveyError(null);
+                setAttemptedSubmitAdd(false);
                 setIsAddModalOpen(true);
               }}
               className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:brightness-105 active:scale-[0.98] text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all shadow-md shadow-emerald-500/15 cursor-pointer no-print"
@@ -695,17 +701,24 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleUpdateRecord} className="p-6 space-y-4">
+            <form noValidate onSubmit={handleUpdateRecord} className="p-6 space-y-4">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Population Count *</label>
+                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmitEdit && !editPersonCount ? 'text-red-500' : 'text-slate-500'}`}>Population Count *</label>
                 <input
                   type="number"
                   required
                   min="1"
                   value={editPersonCount}
-                  onChange={(e) => setEditPersonCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold"
+                  onChange={(e) => setEditPersonCount(Math.max(1, parseInt(e.target.value) || 0))}
+                  className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs font-bold ${
+                    attemptedSubmitEdit && !editPersonCount
+                      ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500 dark:border-red-500'
+                      : 'border-slate-200 dark:border-slate-800'
+                  }`}
                 />
+                {attemptedSubmitEdit && !editPersonCount && (
+                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a valid population count.</p>
+                )}
               </div>
 
               <div>
@@ -766,7 +779,7 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleAddSurvey} className="p-6 space-y-4">
+            <form noValidate onSubmit={handleAddSurvey} className="p-6 space-y-4">
               {addingSurveyError && (
                 <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-655 dark:text-red-450 border border-red-100 dark:border-red-900/50 rounded-xl text-xs flex items-center gap-2 font-semibold">
                   <AlertCircle className="h-4 w-4 shrink-0" />
@@ -776,12 +789,16 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
 
               {/* Group Name Select */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Group Name *</label>
+                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmitAdd && !addSelectedGroupId ? 'text-red-500' : 'text-slate-500'}`}>Group Name *</label>
                 <select
                   required
                   value={addSelectedGroupId}
                   onChange={(e) => setAddSelectedGroupId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-clinic-blue-500 focus:outline-none dark:text-slate-200"
+                  className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs font-semibold focus:outline-none ${
+                    attemptedSubmitAdd && !addSelectedGroupId
+                      ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
+                      : 'border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-clinic-blue-500'
+                  }`}
                 >
                   <option value="" disabled>-- Select Survey Group --</option>
                   {groups.filter(g => g.Status === 'Active').map(g => (
@@ -790,19 +807,29 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
                     </option>
                   ))}
                 </select>
+                {attemptedSubmitAdd && !addSelectedGroupId && (
+                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please select a survey group.</p>
+                )}
               </div>
 
               {/* Population Count */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Population Count *</label>
+                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmitAdd && !addPersonCount ? 'text-red-500' : 'text-slate-500'}`}>Population Count *</label>
                 <input
                   type="number"
                   required
                   min="1"
                   value={addPersonCount}
-                  onChange={(e) => setAddPersonCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-black dark:text-slate-200"
+                  onChange={(e) => setAddPersonCount(Math.max(1, parseInt(e.target.value) || 0))}
+                  className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs font-black dark:text-slate-200 ${
+                    attemptedSubmitAdd && !addPersonCount
+                      ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
+                      : 'border-slate-200 dark:border-slate-800'
+                  }`}
                 />
+                {attemptedSubmitAdd && !addPersonCount && (
+                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a valid population count.</p>
+                )}
               </div>
 
               {/* Auto-fetched and displayed fields (Current Rate, Computed Payout, Assigned Staff) */}

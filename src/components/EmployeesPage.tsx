@@ -55,6 +55,7 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
   const [barangays, setBarangays] = useState<Barangay[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   const loadEmployees = async () => {
     setLoading(true);
@@ -85,6 +86,7 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
     setAddress('');
     setStatus('Active');
     setFormError(null);
+    setAttemptedSubmit(false);
     setIsModalOpen(true);
   };
 
@@ -98,14 +100,16 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
     setAddress(emp.Address || '');
     setStatus(emp.Status);
     setFormError(null);
+    setAttemptedSubmit(false);
     setIsModalOpen(true);
   };
 
   // Create / Update handler
   const handleSaveEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !username.trim() || !pinCode.trim()) {
-      setFormError('FullName, Username, and secure PIN Code are mandatory fields.');
+    setAttemptedSubmit(true);
+    if (!fullName.trim() || !username.trim() || !pinCode.trim() || !address) {
+      setFormError('FullName, Username, PIN Code, and Resident Address (Barangay) are mandatory fields.');
       return;
     }
 
@@ -361,7 +365,7 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSaveEmployee} className="p-6 space-y-4">
+            <form noValidate onSubmit={handleSaveEmployee} className="p-6 space-y-4">
               {formError && (
                 <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300 text-xs border border-red-100 dark:border-red-900 rounded-xl">
                   {formError}
@@ -369,32 +373,52 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
               )}
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Full Name *</label>
+                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !fullName.trim() ? 'text-red-500' : 'text-slate-500'}`}>
+                  Full Name *
+                </label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Dr. Jane Doe"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
+                  className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none ${
+                    attemptedSubmit && !fullName.trim()
+                      ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
+                      : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                  }`}
                 />
+                {attemptedSubmit && !fullName.trim() && (
+                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter full name.</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Username *</label>
+                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !username.trim() ? 'text-red-500' : 'text-slate-500'}`}>
+                  Username *
+                </label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. jdoe"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
+                  className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none ${
+                    attemptedSubmit && !username.trim()
+                      ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
+                      : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                  }`}
                   disabled={editingEmployee !== null} // Lock username for consistency
                 />
+                {attemptedSubmit && !username.trim() && (
+                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter username.</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Authorization PIN (Passcode) *</label>
+                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !pinCode.trim() ? 'text-red-500' : 'text-slate-500'}`}>
+                  Authorization PIN (Passcode) *
+                </label>
                 <input
                   type="text"
                   required
@@ -403,9 +427,18 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
                   placeholder="e.g. 1234, 5555"
                   value={pinCode}
                   onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white tracking-widest font-bold focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
+                  className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white tracking-widest font-bold focus:outline-none ${
+                    attemptedSubmit && !pinCode.trim()
+                      ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
+                      : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                  }`}
                 />
-                <span className="text-[10px] text-slate-400 mt-1 block">Specify numeric code used during login security validation check.</span>
+                {attemptedSubmit && !pinCode.trim() && (
+                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter passcode validation PIN.</p>
+                )}
+                {(!attemptedSubmit || pinCode.trim()) && (
+                  <span className="text-[10px] text-slate-400 mt-1 block">Specify numeric code used during login security validation check.</span>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -448,12 +481,18 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Resident Address (Barangay) *</label>
+                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !address ? 'text-red-500' : 'text-slate-500'}`}>
+                  Resident Address (Barangay) *
+                </label>
                 <select
                   required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500 font-medium"
+                  className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none ${
+                    attemptedSubmit && !address
+                      ? 'border-red-500 focus:ring-1.5 focus:ring-red-500'
+                      : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                  }`}
                 >
                   <option value="" disabled>-- Select Approved Barangay Address --</option>
                   {barangays.map(b => (
@@ -465,7 +504,12 @@ export default function EmployeesPage({ currentAdminId }: EmployeesPageProps) {
                     <option disabled>No approved Barangays found. Go configure under "Manage Barangays".</option>
                   )}
                 </select>
-                <span className="text-[10px] text-slate-400 mt-1 block">Specify pre-set authorized clinic sector location.</span>
+                {attemptedSubmit && !address && (
+                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please select a resident address barangay.</p>
+                )}
+                {(!attemptedSubmit || address) && (
+                  <span className="text-[10px] text-slate-400 mt-1 block">Specify pre-set authorized clinic sector location.</span>
+                )}
               </div>
 
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex space-x-3">

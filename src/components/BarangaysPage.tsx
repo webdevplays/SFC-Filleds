@@ -45,6 +45,7 @@ export default function BarangaysPage({ currentAdminId }: BarangaysPageProps) {
   
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -68,6 +69,7 @@ export default function BarangaysPage({ currentAdminId }: BarangaysPageProps) {
     setCity('Metro Manila');
     setDescription('');
     setFormError(null);
+    setAttemptedSubmit(false);
     setIsModalOpen(true);
   };
 
@@ -77,11 +79,13 @@ export default function BarangaysPage({ currentAdminId }: BarangaysPageProps) {
     setCity(item.City);
     setDescription(item.Description || '');
     setFormError(null);
+    setAttemptedSubmit(false);
     setIsModalOpen(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAttemptedSubmit(true);
     if (!name.trim() || !city.trim()) {
       setFormError('Barangay Name and Location/City are required fields.');
       return;
@@ -289,35 +293,53 @@ export default function BarangaysPage({ currentAdminId }: BarangaysPageProps) {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSave} className="p-6 space-y-4">
+            <form noValidate onSubmit={handleSave} className="p-6 space-y-4">
               {formError && (
-                <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-750 dark:text-red-300 text-xs border border-red-100 dark:border-red-900 rounded-xl">
+                <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-755 dark:text-red-300 text-xs border border-red-100 dark:border-red-900 rounded-xl">
                   {formError}
                 </div>
               )}
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Barangay Name *</label>
+                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !name.trim() ? 'text-red-500' : 'text-slate-500'}`}>
+                  Barangay Name *
+                </label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Barangay San Juan"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
+                  className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none ${
+                    attemptedSubmit && !name.trim()
+                      ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
+                      : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                  }`}
                 />
+                {attemptedSubmit && !name.trim() && (
+                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a barangay name.</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">City / Municipality *</label>
+                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${attemptedSubmit && !city.trim() ? 'text-red-500' : 'text-slate-500'}`}>
+                  City / Municipality *
+                </label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Metro Manila"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
+                  className={`w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none ${
+                    attemptedSubmit && !city.trim()
+                      ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
+                      : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                  }`}
                 />
+                {attemptedSubmit && !city.trim() && (
+                  <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a city or municipality.</p>
+                )}
               </div>
 
               <div>

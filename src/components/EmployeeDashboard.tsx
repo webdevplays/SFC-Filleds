@@ -41,6 +41,7 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
   
   const [submissionStatus, setSubmissionStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [attemptedSubmitSurvey, setAttemptedSubmitSurvey] = useState(false);
 
   // Profile settings states
   const [newUsername, setNewUsername] = useState(user.Username);
@@ -50,6 +51,7 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
   const [savingSettings, setSavingSettings] = useState(false);
   const [showPincodeInput, setShowPincodeInput] = useState(false);
   const [showConfirmPincodeInput, setShowConfirmPincodeInput] = useState(false);
+  const [attemptedSubmitSettings, setAttemptedSubmitSettings] = useState(false);
 
   // Load user data
   const loadData = async () => {
@@ -120,6 +122,7 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
   // Handle Form Submission
   const handleSubmitSurvey = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAttemptedSubmitSurvey(true);
     if (!selectedGroupId || !houseNumber.trim() || personCount < 1) {
       setSubmissionStatus({ type: 'error', message: 'Please complete all required entries.' });
       return;
@@ -146,6 +149,7 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
         setHouseNumber('1');
         setPersonCount(1);
         setRemarks('');
+        setAttemptedSubmitSurvey(false);
         
         // Reload data
         loadData();
@@ -162,6 +166,7 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAttemptedSubmitSettings(true);
     setSettingsStatus(null);
 
     if (!newUsername.trim()) {
@@ -193,6 +198,7 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
         setSettingsStatus({ type: 'success', message: 'Account settings updated successfully!' });
         setNewPincode('');
         setConfirmPincode('');
+        setAttemptedSubmitSettings(false);
         if (onUserUpdate) {
           onUserUpdate(res.employee);
         }
@@ -328,7 +334,7 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
                     </p>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmitSurvey} className="space-y-4">
+                  <form noValidate onSubmit={handleSubmitSurvey} className="space-y-4">
                     {submissionStatus && (
                       <div className={`p-3.5 rounded-xl border text-xs font-medium ${
                         submissionStatus.type === 'success' 
@@ -363,15 +369,22 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
                         <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Entry Information</span>
 
                         <div>
-                          <label className="block text-[11px] font-medium text-slate-500 mb-1">Population Count *</label>
+                          <label className={`block text-[11px] font-medium mb-1 ${attemptedSubmitSurvey && !personCount ? 'text-red-500' : 'text-slate-500'}`}>Population Count *</label>
                           <input
                             type="number"
                             min="1"
                             required
                             value={personCount}
-                            onChange={(e) => setPersonCount(Math.max(1, parseInt(e.target.value) || 1))}
-                            className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs rounded-xl focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500 dark:text-white font-semibold"
+                            onChange={(e) => setPersonCount(Math.max(1, parseInt(e.target.value) || 0))}
+                            className={`w-full px-3 py-2 bg-white dark:bg-slate-950 border text-xs rounded-xl focus:outline-none dark:text-white font-semibold ${
+                              attemptedSubmitSurvey && !personCount
+                                ? 'border-red-500 focus:ring-1.5 focus:ring-red-500'
+                                : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                            }`}
                           />
+                          {attemptedSubmitSurvey && !personCount && (
+                            <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter household population counts.</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -462,7 +475,7 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
                   <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 font-heading">Account Settings</h3>
                 </div>
                 
-                <form onSubmit={handleUpdateSettings} className="space-y-3">
+                <form noValidate onSubmit={handleUpdateSettings} className="space-y-3">
                   {settingsStatus && (
                     <div className={`p-2 rounded-lg border text-[11px] font-medium ${
                       settingsStatus.type === 'success' 
@@ -474,15 +487,22 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
                   )}
 
                   <div>
-                    <label className="block text-[10px] font-medium text-slate-500 mb-1">Username</label>
+                    <label className={`block text-[10px] font-medium mb-1 ${attemptedSubmitSettings && !newUsername.trim() ? 'text-red-500' : 'text-slate-500'}`}>Username</label>
                     <input
                       type="text"
                       required
                       value={newUsername}
                       onChange={(e) => setNewUsername(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs rounded-xl focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500 dark:text-white"
+                      className={`w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-950 border text-xs rounded-xl focus:outline-none dark:text-white ${
+                        attemptedSubmitSettings && !newUsername.trim()
+                          ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
+                          : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                      }`}
                       placeholder="Enter username"
                     />
+                    {attemptedSubmitSettings && !newUsername.trim() && (
+                      <p className="text-[10px] text-red-500 mt-1 font-medium">Please enter a valid username.</p>
+                    )}
                   </div>
 
                   <div className="space-y-2 pt-1">
@@ -492,14 +512,18 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
                     </p>
                     
                     <div>
-                      <label className="block text-[10px] font-medium text-slate-500 mb-1">New PIN Code (4-8 digits)</label>
+                      <label className={`block text-[10px] font-medium mb-1 ${attemptedSubmitSettings && newPincode && (!/^\d{4,8}$/.test(newPincode) || newPincode !== confirmPincode) ? 'text-red-500' : 'text-slate-500'}`}>New PIN Code (4-8 digits)</label>
                       <div className="relative">
                         <input
                           type={showPincodeInput ? "text" : "password"}
                           maxLength={8}
                           value={newPincode}
                           onChange={(e) => setNewPincode(e.target.value.replace(/\D/g, ''))}
-                          className="w-full pl-3 pr-8 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs rounded-xl focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500 dark:text-white font-mono tracking-widest"
+                          className={`w-full pl-3 pr-8 py-1.5 bg-slate-50 dark:bg-slate-950 border text-xs rounded-xl focus:outline-none dark:text-white font-mono tracking-widest ${
+                            attemptedSubmitSettings && newPincode && (!/^\d{4,8}$/.test(newPincode) || newPincode !== confirmPincode)
+                              ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
+                              : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                          }`}
                           placeholder="••••"
                         />
                         <button
@@ -514,14 +538,18 @@ export default function EmployeeDashboard({ user, onRecordAdded, onUserUpdate }:
 
                     {newPincode.length > 0 && (
                       <div className="animate-in slide-in-from-top-1 duration-150">
-                        <label className="block text-[10px] font-medium text-slate-500 mb-1">Confirm New PIN Code</label>
+                        <label className={`block text-[10px] font-medium mb-1 ${attemptedSubmitSettings && newPincode !== confirmPincode ? 'text-red-500' : 'text-slate-500'}`}>Confirm New PIN Code</label>
                         <div className="relative">
                           <input
                             type={showConfirmPincodeInput ? "text" : "password"}
                             maxLength={8}
                             value={confirmPincode}
                             onChange={(e) => setConfirmPincode(e.target.value.replace(/\D/g, ''))}
-                            className="w-full pl-3 pr-8 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs rounded-xl focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500 dark:text-white font-mono tracking-widest"
+                            className={`w-full pl-3 pr-8 py-1.5 bg-slate-50 dark:bg-slate-950 border text-xs rounded-xl focus:outline-none dark:text-white font-mono tracking-widest ${
+                              attemptedSubmitSettings && newPincode !== confirmPincode
+                                ? 'border-red-500 focus:ring-1.5 focus:ring-red-500 ring-red-500'
+                                : 'border-slate-200 dark:border-slate-800 focus:ring-1.5 focus:ring-clinic-blue-500'
+                            }`}
                             placeholder="••••"
                           />
                           <button
