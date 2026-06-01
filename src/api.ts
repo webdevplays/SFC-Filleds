@@ -680,6 +680,11 @@ const simulatedApi = {
     return getLocalItem<ActivityLog>(STORAGE_KEYS.LOGS, DEFAULT_LOGS);
   },
 
+  clearLogs: async () => {
+    localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify([]));
+    return { success: true };
+  },
+
   getDesignatedGroups: async () => {
     return getLocalItem<DesignatedGroup>(STORAGE_KEYS.DESIGNATED_GROUPS, DEFAULT_DESIGNATED_GROUPS);
   },
@@ -948,6 +953,12 @@ export const api = {
     withFallback(
       () => apiRequest('/api/logs'),
       () => simulatedApi.getLogs()
+    ),
+
+  clearLogs: () =>
+    withFallback(
+      () => apiRequest('/api/logs', 'DELETE'),
+      () => simulatedApi.clearLogs()
     ),
 
   // Designated Groups

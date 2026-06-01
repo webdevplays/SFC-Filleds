@@ -256,7 +256,15 @@ export default function App() {
               className="max-w-7xl mx-auto"
             >
               {activeTab === 'dashboard' && (
-                user.Position === 'Admin' ? <AdminDashboard /> : <EmployeeDashboard user={user} />
+                user.Position === 'Admin' ? <AdminDashboard /> : (
+                  <EmployeeDashboard
+                    user={user}
+                    onUserUpdate={(updatedUser) => {
+                      setUser(updatedUser);
+                      localStorage.setItem('sfc_user_session', JSON.stringify(updatedUser));
+                    }}
+                  />
+                )
               )}
               {activeTab === 'records' && (
                 <RecordsPage user={user} isPaidView={false} />

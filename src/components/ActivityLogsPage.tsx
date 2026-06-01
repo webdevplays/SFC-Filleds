@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
 import { ActivityLog } from '../types';
-import { History, Shield, Clock, Search, RefreshCw, AlertCircle } from 'lucide-react';
+import { History, Shield, Clock, Search, RefreshCw, AlertCircle, Trash2 } from 'lucide-react';
 
 export default function ActivityLogsPage() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -32,6 +32,24 @@ export default function ActivityLogsPage() {
       l.LogID.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleClearLogs = async () => {
+    const confirmClear = window.confirm(
+      "Are you sure you want to permanently delete all system audit logs? This action is irreversible."
+    );
+    if (!confirmClear) return;
+
+    try {
+      setLoading(true);
+      await api.clearLogs();
+      await fetchLogs();
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || "Failed to clear logs.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -43,12 +61,25 @@ export default function ActivityLogsPage() {
             Browse cryptographic tracking hashes for system actions, employee logins, and survey edits.
           </p>
         </div>
-        <button
-          onClick={fetchLogs}
-          className="p-2 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-950 rounded-xl text-slate-600 dark:text-slate-400 transition-all shadow-sm cursor-pointer"
-        >
-          <RefreshCw className="h-4.5 w-4.5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {logs.length > 0 && (
+            <button
+              onClick={handleClearLogs}
+              className="px-3.5 py-2 bg-red-50 hover:bg-red-105 active:scale-[0.98] dark:bg-red-950/20 dark:hover:bg-red-950/45 text-red-650 dark:text-red-400 border border-red-100 dark:border-red-900/40 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all shadow-sm cursor-pointer"
+              id="clear-logs-btn"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Clear Audit Trail</span>
+            </button>
+          )}
+          <button
+            onClick={fetchLogs}
+            className="p-2 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-950 rounded-xl text-slate-600 dark:text-slate-400 transition-all shadow-sm cursor-pointer"
+            title="Refresh Audit Logs"
+          >
+            <RefreshCw className={`h-4.5 w-4.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-2xl shadow-sm space-y-4">

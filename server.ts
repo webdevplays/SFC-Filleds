@@ -9,6 +9,7 @@ import {
   getRecords,
   saveRecords,
   getLogs,
+  clearLogs,
   addLog,
   getNotifications,
   saveNotifications,
@@ -1021,6 +1022,16 @@ async function startServer() {
     try {
       const logs = await getLogs();
       res.json(logs);
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Permanently delete/clear all activity logs (Requires Admin)
+  app.delete('/api/logs', async (req, res) => {
+    try {
+      await clearLogs();
+      res.json({ success: true, message: 'All system logs permanently cleared.' });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
     }

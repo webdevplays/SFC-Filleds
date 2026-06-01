@@ -665,6 +665,24 @@ export async function addLog(userId: string, activity: string, ip: string = '127
   await saveLogs(logs);
 }
 
+export async function clearLogs(): Promise<void> {
+  localLogs = [];
+  writeJSON(LOGS_FILE, localLogs);
+
+  const client = getSheetsClient();
+  if (client) {
+    const { sheets, spreadsheetId } = client;
+    try {
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId,
+        range: 'ActivityLogs!A2:E10000'
+      });
+    } catch (e) {
+      console.error('Clearing Google Sheets failed for ActivityLogs.', e);
+    }
+  }
+}
+
 export async function getNotifications(): Promise<Notification[]> {
   const client = getSheetsClient();
   if (!client) {
