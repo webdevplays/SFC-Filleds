@@ -26,6 +26,7 @@ export interface Group {
   PayoutRate: number; // Decimal/Float or integer PHP per person
   StartDate: string; // YYYY-MM-DD
   Status: 'Active' | 'Retired';
+  Address?: string; // Barangay address
 }
 
 export interface ClinicRecord {

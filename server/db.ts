@@ -285,7 +285,7 @@ async function ensureSheetsAndHeaders() {
 
     const sheetsToCreate = [
       { name: 'Employees', headers: ['EmployeeID', 'FullName', 'Username', 'PINCode', 'Position', 'Status', 'ContactNumber', 'CreatedDate'] },
-      { name: 'Groups', headers: ['GroupID', 'GroupName', 'GroupCode', 'LeaderID', 'CoLeaderIDs', 'PayoutRate', 'StartDate', 'Status'] },
+      { name: 'Groups', headers: ['GroupID', 'GroupName', 'GroupCode', 'LeaderID', 'CoLeaderIDs', 'PayoutRate', 'StartDate', 'Status', 'Address'] },
       { name: 'Records', headers: ['RecordID', 'GroupID', 'LeaderID', 'HouseNumber', 'PersonCount', 'PayoutRate', 'TotalPayout', 'Remarks', 'CreatedDate', 'IsPaid', 'PaidDate'] },
       { name: 'ActivityLogs', headers: ['LogID', 'UserID', 'Activity', 'DateTime', 'IPAddress'] },
       { name: 'Notifications', headers: ['NotificationID', 'TargetUserID', 'SourceUserID', 'Title', 'Message', 'Type', 'CreatedDate', 'IsRead'] },
@@ -362,12 +362,12 @@ async function syncEmployeesToSheets(employees: Employee[], sheets: any, spreads
 
 async function syncGroupsToSheets(groups: Group[], sheets: any, spreadsheetId: string) {
   const values = [
-    ['GroupID', 'GroupName', 'GroupCode', 'LeaderID', 'CoLeaderIDs', 'PayoutRate', 'StartDate', 'Status'],
-    ...groups.map(g => [g.GroupID, g.GroupName, g.GroupCode, g.LeaderID, g.CoLeaderIDs.join(','), g.PayoutRate.toString(), g.StartDate, g.Status])
+    ['GroupID', 'GroupName', 'GroupCode', 'LeaderID', 'CoLeaderIDs', 'PayoutRate', 'StartDate', 'Status', 'Address'],
+    ...groups.map(g => [g.GroupID, g.GroupName, g.GroupCode, g.LeaderID, g.CoLeaderIDs.join(','), g.PayoutRate.toString(), g.StartDate, g.Status, g.Address || ''])
   ];
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: 'Groups!A1:H1000',
+    range: 'Groups!A1:I1000',
     valueInputOption: 'RAW',
     requestBody: { values }
   });
@@ -520,7 +520,7 @@ export async function getGroups(): Promise<Group[]> {
   }
   const { sheets, spreadsheetId } = client;
   try {
-    const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'Groups!A2:H1000' });
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'Groups!A2:I1000' });
     const rows = response.data.values || [];
     const groups: Group[] = rows.map(r => ({
       GroupID: r[0] || '',
@@ -530,7 +530,8 @@ export async function getGroups(): Promise<Group[]> {
       CoLeaderIDs: r[4] ? r[4].split(',').map((id: string) => id.trim()).filter((id: string) => id) : [],
       PayoutRate: parseFloat(r[5] || '0'),
       StartDate: r[6] || '',
-      Status: (r[7] || 'Active') as any
+      Status: (r[7] || 'Active') as any,
+      Address: r[8] || ''
     })).filter(g => g.GroupID);
 
     if (groups.length > 0) {

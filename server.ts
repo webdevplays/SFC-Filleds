@@ -302,7 +302,7 @@ async function startServer() {
   // Create Group
   app.post('/api/groups', async (req, res) => {
     try {
-      const { GroupName, GroupCode, PayoutRate, LeaderID, CoLeaderIDs, StartDate } = req.body;
+      const { GroupName, GroupCode, PayoutRate, LeaderID, CoLeaderIDs, StartDate, Address } = req.body;
       const creator = req.headers['x-user-id'] as string || 'Admin';
 
       if (!GroupName || !GroupCode || PayoutRate === undefined || !LeaderID) {
@@ -330,7 +330,8 @@ async function startServer() {
         CoLeaderIDs: CoLeaderIDs || [],
         PayoutRate: Number(PayoutRate),
         StartDate: StartDate || new Date().toISOString().split('T')[0],
-        Status: 'Active'
+        Status: 'Active',
+        Address: Address || ''
       };
 
       groups.push(newGroup);
@@ -354,7 +355,7 @@ async function startServer() {
   app.put('/api/groups/:id', async (req, res) => {
     try {
       const { id } = req.params;
-      const { GroupName, GroupCode, PayoutRate, LeaderID, CoLeaderIDs, StartDate, Status } = req.body;
+      const { GroupName, GroupCode, PayoutRate, LeaderID, CoLeaderIDs, StartDate, Status, Address } = req.body;
       const modifier = req.headers['x-user-id'] as string || 'Admin';
 
       const groups = await getGroups();
@@ -377,7 +378,8 @@ async function startServer() {
         LeaderID: LeaderID !== undefined ? LeaderID : existing.LeaderID,
         CoLeaderIDs: CoLeaderIDs !== undefined ? CoLeaderIDs : existing.CoLeaderIDs,
         StartDate: StartDate !== undefined ? StartDate : existing.StartDate,
-        Status: Status !== undefined ? Status : existing.Status
+        Status: Status !== undefined ? Status : existing.Status,
+        Address: Address !== undefined ? Address : existing.Address
       };
 
       await saveGroups(groups);

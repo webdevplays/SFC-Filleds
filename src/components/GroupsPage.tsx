@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { Group, Employee, DesignatedGroup } from '../types';
+import { Group, Employee, DesignatedGroup, Barangay } from '../types';
 import {
   Briefcase,
   Plus,
@@ -15,7 +15,8 @@ import {
   Layers,
   UserCheck,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  MapPin
 } from 'lucide-react';
 
 interface GroupsPageProps {
@@ -53,6 +54,8 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
   const [selectedCoLeaders, setSelectedCoLeaders] = useState<string[]>([]);
   const [startDate, setStartDate] = useState('');
   const [groupStatus, setGroupStatus] = useState<'Active' | 'Retired'>('Active');
+  const [barangays, setBarangays] = useState<Barangay[]>([]);
+  const [address, setAddress] = useState('');
 
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -63,9 +66,11 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
       const allGroups = await api.getGroups();
       const allEmps = await api.getEmployees();
       const allPresets = await api.getDesignatedGroups();
+      const allBarangays = await api.getBarangays();
       setGroups(allGroups);
       setEmployees(allEmps.filter((e: Employee) => e.Status === 'Active'));
       setDesignatedGroups(allPresets);
+      setBarangays(allBarangays);
 
       // Pre-select first leader if available
       const leadersList = allEmps.filter((e: Employee) => e.Position === 'Leader' && e.Status === 'Active');
@@ -87,6 +92,7 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
     setEditingGroup(null);
     setGroupName('');
     setGroupCode('');
+    setAddress('');
     setPayoutRate(50);
     
     const leadersList = employees.filter(e => e.Position === 'Leader');
@@ -107,6 +113,7 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
     setEditingGroup(grp);
     setGroupName(grp.GroupName);
     setGroupCode(grp.GroupCode);
+    setAddress(grp.Address || '');
     setPayoutRate(grp.PayoutRate);
     setLeaderId(grp.LeaderID);
     setSelectedCoLeaders(grp.CoLeaderIDs);
@@ -127,8 +134,8 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
 
   const handleSaveGroup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!groupName.trim() || !groupCode.trim() || payoutRate === undefined || !leaderId) {
-      setFormError('Required fields are Group Name, Group Code, Payout Rate and Leader Assignment.');
+    if (!groupName.trim() || !groupCode.trim() || payoutRate === undefined || !leaderId || !address) {
+      setFormError('Required fields are Group Name, Group Code, Payout Rate, Leader Assignment, and Operational Barangay Address.');
       return;
     }
 
@@ -146,7 +153,8 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
             LeaderID: leaderId,
             CoLeaderIDs: selectedCoLeaders,
             StartDate: startDate,
-            Status: groupStatus
+            Status: groupStatus,
+            Address: address
           },
           currentAdminId
         );
@@ -166,7 +174,8 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
             LeaderID: leaderId,
             CoLeaderIDs: selectedCoLeaders,
             StartDate: startDate,
-            Status: 'Active'
+            Status: 'Active',
+            Address: address
           },
           currentAdminId
         );
@@ -325,7 +334,7 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
                 {/* Dropdown details content */}
                 {isExpanded && (
                   <div className="px-5 pb-5 pt-1.5 border-t border-slate-50 dark:border-slate-805/40 bg-slate-50/50 dark:bg-slate-950/10 space-y-4 animate-in slide-in-from-top-2 duration-150-all">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs pt-2">
                       <div className="flex items-start space-x-3">
                         <Users className="h-4.5 w-4.5 text-clinic-green-650 flex-shrink-0 mt-0.5" />
                         <div>
@@ -339,9 +348,19 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
                       <div className="flex items-start space-x-3">
                         <Calendar className="h-4.5 w-4.5 text-slate-400 flex-shrink-0 mt-0.5" />
                         <div>
-                          <span className="block text-[10px] font-bold text-slate-400 uppercase font-mono">Commission Start Date</span>
+                          <span className="block text-[10px] font-bold text-slate-400 uppercase font-mono font-bold">Commission Start Date</span>
                           <span className="font-medium text-slate-600 dark:text-slate-400 block pb-1">
                             {group.StartDate}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3">
+                        <MapPin className="h-4.5 w-4.5 text-clinic-blue-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <span className="block text-[10px] font-bold text-slate-400 uppercase font-mono font-bold text-clinic-blue-600 dark:text-clinic-blue-400">Operational Barangay Address</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 block pb-1">
+                            {group.Address || 'Not Configured'}
                           </span>
                         </div>
                       </div>
@@ -433,6 +452,20 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
                       if (found) {
                         setGroupName(found.GroupName);
                         setGroupCode(found.GroupCode);
+                        // Sift through and matching barangay Name to auto-select Barangay
+                        const matchedBgy = barangays.find(b => 
+                          found.GroupName.toLowerCase().includes(b.Name.toLowerCase()) ||
+                          b.Name.toLowerCase().includes(found.GroupName.toLowerCase())
+                        );
+                        if (matchedBgy) {
+                          setAddress(`${matchedBgy.Name}, ${matchedBgy.City}`);
+                        } else {
+                          setAddress('');
+                        }
+                      } else {
+                        setGroupName('');
+                        setGroupCode('');
+                        setAddress('');
                       }
                     }}
                     value={designatedGroups.find(dg => dg.GroupName === groupName && dg.GroupCode === groupCode)?.DesignatedID || ''}
@@ -526,7 +559,7 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
                   />
                 </div>
 
-                {editingGroup && (
+                {editingGroup ? (
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Operation Status</label>
                     <select
@@ -538,8 +571,44 @@ export default function GroupsPage({ currentAdminId }: GroupsPageProps) {
                       <option value="Retired">Retired</option>
                     </select>
                   </div>
+                ) : (
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Operational Barangay Address *</label>
+                    <select
+                      required
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none cursor-pointer"
+                    >
+                      <option value="" disabled>-- Select Address Barangay --</option>
+                      {barangays.map(b => (
+                        <option key={b.BarangayID} value={`${b.Name}, ${b.City}`}>
+                          {b.Name}, {b.City}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
               </div>
+
+              {editingGroup && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Operational Barangay Address *</label>
+                  <select
+                    required
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none cursor-pointer"
+                  >
+                    <option value="" disabled>-- Select Address Barangay --</option>
+                    {barangays.map(b => (
+                      <option key={b.BarangayID} value={`${b.Name}, ${b.City}`}>
+                        {b.Name}, {b.City}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Multi-select Co-Leaders Checkbox Checklist */}
               <div>

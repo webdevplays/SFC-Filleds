@@ -411,6 +411,7 @@ const simulatedApi = {
       PayoutRate: data.PayoutRate || 50,
       StartDate: data.StartDate || new Date().toISOString().split('T')[0],
       Status: 'Active',
+      Address: data.Address || '',
     };
     groups.push(newGroup);
     setLocalItem(STORAGE_KEYS.GROUPS, groups);
