@@ -177,17 +177,9 @@ function readJSON(filePath: string, defaultData: any) {
   try {
     const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     if (filePath === EMPLOYEES_FILE && Array.isArray(data)) {
-      let updated = [...data];
-      let changed = false;
-      defaultData.forEach((def: any) => {
-        if (!updated.some((e: any) => e.Username?.toLowerCase() === def.Username?.toLowerCase())) {
-          updated.push(def);
-          changed = true;
-        }
-      });
-      if (changed) {
-        writeJSON(filePath, updated);
-        return updated;
+      if (data.length === 0) {
+        writeJSON(filePath, defaultData);
+        return defaultData;
       }
     }
     return data;
@@ -432,14 +424,8 @@ async function syncNotificationsToSheets(notifs: Notification[], sheets: any, sp
 export async function getEmployees(): Promise<Employee[]> {
   const client = getSheetsClient();
   if (!client) {
-    let changed = false;
-    DEFAULT_EMPLOYEES.forEach((def) => {
-      if (!localEmployees.some(e => e.Username?.toLowerCase() === def.Username?.toLowerCase())) {
-        localEmployees.push(def);
-        changed = true;
-      }
-    });
-    if (changed) {
+    if (localEmployees.length === 0) {
+      localEmployees = [...DEFAULT_EMPLOYEES];
       writeJSON(EMPLOYEES_FILE, localEmployees);
     }
     return localEmployees;
@@ -460,33 +446,20 @@ export async function getEmployees(): Promise<Employee[]> {
     })).filter(e => e.EmployeeID);
 
     let updated = employees.length > 0 ? [...employees] : [...localEmployees];
-    let changed = false;
-    DEFAULT_EMPLOYEES.forEach((def) => {
-      if (!updated.some(e => e.Username?.toLowerCase() === def.Username?.toLowerCase())) {
-        updated.push(def);
-        changed = true;
-      }
-    });
-
-    if (changed || employees.length > 0) {
+    if (updated.length === 0) {
+      updated = [...DEFAULT_EMPLOYEES];
       localEmployees = updated;
       writeJSON(EMPLOYEES_FILE, localEmployees);
-      if (changed) {
-        // Sync them back to google sheets so they are available in the sheet as well
-        await syncEmployeesToSheets(localEmployees, sheets, spreadsheetId).catch(console.error);
-      }
+      await syncEmployeesToSheets(localEmployees, sheets, spreadsheetId).catch(console.error);
+    } else {
+      localEmployees = updated;
+      writeJSON(EMPLOYEES_FILE, localEmployees);
     }
     return localEmployees;
   } catch (error) {
     console.error('Google Sheets read failed for Employees, falling back to local database.', error);
-    let changed = false;
-    DEFAULT_EMPLOYEES.forEach((def) => {
-      if (!localEmployees.some(e => e.Username?.toLowerCase() === def.Username?.toLowerCase())) {
-        localEmployees.push(def);
-        changed = true;
-      }
-    });
-    if (changed) {
+    if (localEmployees.length === 0) {
+      localEmployees = [...DEFAULT_EMPLOYEES];
       writeJSON(EMPLOYEES_FILE, localEmployees);
     }
     return localEmployees;

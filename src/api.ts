@@ -247,17 +247,9 @@ function getLocalItem<T>(key: string, defaults: T[]): T[] {
   try {
     const parsed = JSON.parse(item) as T[];
     if (key === STORAGE_KEYS.EMPLOYEES && Array.isArray(parsed)) {
-      let updated = [...parsed];
-      let changed = false;
-      (defaults as any[]).forEach(def => {
-        if (!updated.some((e: any) => e.Username?.toLowerCase() === def.Username?.toLowerCase())) {
-          updated.push(def);
-          changed = true;
-        }
-      });
-      if (changed) {
-        localStorage.setItem(key, JSON.stringify(updated));
-        return updated as T[];
+      if (parsed.length === 0) {
+        localStorage.setItem(key, JSON.stringify(defaults));
+        return defaults;
       }
     }
     return parsed;
