@@ -110,10 +110,10 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-700 to-lime-650">
         <div className="flex flex-col items-center space-y-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-clinic-blue-600 border-t-transparent" />
-          <p className="text-xs text-slate-400 font-bold tracking-wider font-heading uppercase">Saint Francis Clinic</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent" />
+          <p className="text-xs text-white font-black tracking-widest font-heading uppercase">Saint Francis Clinic</p>
         </div>
       </div>
     );
@@ -127,7 +127,7 @@ export default function App() {
   const unreadNotifCount = notifications.filter(n => !n.IsRead).length;
 
   return (
-    <div className="h-screen overflow-hidden flex w-full bg-[#F8FAFC] dark:bg-slate-950 transition-colors duration-300">
+    <div className="h-screen overflow-hidden flex w-full bg-slate-50/25 dark:bg-slate-950/35 backdrop-blur-md transition-colors duration-300">
       {/* Sidebar Navigation */}
       <Sidebar
         user={user}

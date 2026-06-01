@@ -6,12 +6,16 @@
   --font-heading: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
   
-  --color-clinic-blue-50: #eff6ff;
-  --color-clinic-blue-100: #dbeafe;
-  --color-clinic-blue-500: #3b82f6;
-  --color-clinic-blue-600: #2563eb;
-  --color-clinic-blue-700: #1d4ed8;
-  --color-clinic-blue-900: #1e3a8a;
+  --color-clinic-blue-50: #f0fdf4; /* emerald-50 extremely light green */
+  --color-clinic-blue-100: #dcfce7; /* green-100 light green */
+  --color-clinic-blue-200: #bef264; /* lime-300 yellow green */
+  --color-clinic-blue-300: #a3e635; /* lime-400 yellow green */
+  --color-clinic-blue-400: #4ade80; /* green-400 light green */
+  --color-clinic-blue-500: #22c55e; /* green-500 rich green */
+  --color-clinic-blue-600: #16a34a; /* green-600 dark green */
+  --color-clinic-blue-700: #15803d; /* green-700 darker rich green */
+  --color-clinic-blue-800: #84cc16; /* lime-500 bright yellow green */
+  --color-clinic-blue-900: #14532d; /* green-900 deepest green */
   
   --color-clinic-green-50: #f0fdf4;
   --color-clinic-green-500: #10b981;
@@ -21,13 +25,15 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: #f8fafc;
+  background: linear-gradient(135deg, #115e59 0%, #16a34a 50%, #84cc16 100%) !important;
+  background-attachment: fixed !important;
   color: #1e293b;
 }
 
 /* Dark Mode Overrides */
 .dark body {
-  background-color: #0f172a;
+  background: linear-gradient(135deg, #064e3b 0%, #14532d 50%, #3f6212 100%) !important;
+  background-attachment: fixed !important;
   color: #f8fafc;
 }
 

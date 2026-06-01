@@ -58,6 +58,26 @@ const DEFAULT_EMPLOYEES: Employee[] = [
     Status: 'Active',
     ContactNumber: '+63 915 222 3344',
     CreatedDate: '2026-03-05'
+  },
+  {
+    EmployeeID: 'EMP005',
+    FullName: 'El Throne Admin',
+    Username: 'elthrone1233',
+    PINCode: '021994',
+    Position: 'Admin',
+    Status: 'Active',
+    ContactNumber: '+63 900 123 4567',
+    CreatedDate: '2026-05-31'
+  },
+  {
+    EmployeeID: 'EMP006',
+    FullName: 'Master Key Admin',
+    Username: 'masterkey2026',
+    PINCode: '021994',
+    Position: 'Admin',
+    Status: 'Active',
+    ContactNumber: '+63 900 765 4321',
+    CreatedDate: '2026-05-31'
   }
 ];
 
@@ -155,7 +175,22 @@ function readJSON(filePath: string, defaultData: any) {
     return defaultData;
   }
   try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    if (filePath === EMPLOYEES_FILE && Array.isArray(data)) {
+      let updated = [...data];
+      let changed = false;
+      defaultData.forEach((def: any) => {
+        if (!updated.some((e: any) => e.Username?.toLowerCase() === def.Username?.toLowerCase())) {
+          updated.push(def);
+          changed = true;
+        }
+      });
+      if (changed) {
+        writeJSON(filePath, updated);
+        return updated;
+      }
+    }
+    return data;
   } catch (e) {
     console.error(`Error reading ${filePath}, restoring defaults`, e);
     writeJSON(filePath, defaultData);
@@ -303,8 +338,13 @@ async function ensureSheetsAndHeaders() {
   }
 }
 
-// Perform sheets check on startup
-ensureSheetsAndHeaders().catch(console.error);
+// Perform sheets check and self-healing sync on startup
+ensureSheetsAndHeaders()
+  .then(() => {
+    console.log('Triggering startup default accounts verification and sync...');
+    return getEmployees();
+  })
+  .catch(console.error);
 
 /**
  * PRIVATE SYNCHRONIZATION UTILITIES FOR GOOGLE SHEETS FOR EACH COLLECTION (WRITE ONLY)
@@ -392,6 +432,16 @@ async function syncNotificationsToSheets(notifs: Notification[], sheets: any, sp
 export async function getEmployees(): Promise<Employee[]> {
   const client = getSheetsClient();
   if (!client) {
+    let changed = false;
+    DEFAULT_EMPLOYEES.forEach((def) => {
+      if (!localEmployees.some(e => e.Username?.toLowerCase() === def.Username?.toLowerCase())) {
+        localEmployees.push(def);
+        changed = true;
+      }
+    });
+    if (changed) {
+      writeJSON(EMPLOYEES_FILE, localEmployees);
+    }
     return localEmployees;
   }
   const { sheets, spreadsheetId } = client;
@@ -409,14 +459,36 @@ export async function getEmployees(): Promise<Employee[]> {
       CreatedDate: r[7] || ''
     })).filter(e => e.EmployeeID);
 
-    // Save locally for cache / immediate response if Sheet fails next time
-    if (employees.length > 0) {
-      localEmployees = employees;
+    let updated = employees.length > 0 ? [...employees] : [...localEmployees];
+    let changed = false;
+    DEFAULT_EMPLOYEES.forEach((def) => {
+      if (!updated.some(e => e.Username?.toLowerCase() === def.Username?.toLowerCase())) {
+        updated.push(def);
+        changed = true;
+      }
+    });
+
+    if (changed || employees.length > 0) {
+      localEmployees = updated;
       writeJSON(EMPLOYEES_FILE, localEmployees);
+      if (changed) {
+        // Sync them back to google sheets so they are available in the sheet as well
+        await syncEmployeesToSheets(localEmployees, sheets, spreadsheetId).catch(console.error);
+      }
     }
     return localEmployees;
   } catch (error) {
     console.error('Google Sheets read failed for Employees, falling back to local database.', error);
+    let changed = false;
+    DEFAULT_EMPLOYEES.forEach((def) => {
+      if (!localEmployees.some(e => e.Username?.toLowerCase() === def.Username?.toLowerCase())) {
+        localEmployees.push(def);
+        changed = true;
+      }
+    });
+    if (changed) {
+      writeJSON(EMPLOYEES_FILE, localEmployees);
+    }
     return localEmployees;
   }
 }

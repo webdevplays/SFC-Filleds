@@ -303,20 +303,7 @@ export default function EmployeeDashboard({ user, onRecordAdded }: EmployeeDashb
                         <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">Entry Information</span>
 
                         <div>
-                          <label className="block text-[11px] font-medium text-slate-500 mb-1">House Count *</label>
-                          <input
-                            type="number"
-                            min="1"
-                            required
-                            placeholder="e.g. 5"
-                            value={houseNumber}
-                            onChange={(e) => setHouseNumber(e.target.value)}
-                            className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs rounded-xl focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500 dark:text-white font-semibold"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-medium text-slate-500 mb-1">Person Count *</label>
+                          <label className="block text-[11px] font-medium text-slate-500 mb-1">Population Count *</label>
                           <input
                             type="number"
                             min="1"

@@ -693,7 +693,7 @@ async function startServer() {
     }
   });
 
-  // Submit survey record (Only Leaders)
+  // Submit survey record (Only Leaders or Admins)
   app.post('/api/records', async (req, res) => {
     try {
       const { GroupID, LeaderID, HouseNumber, PersonCount, Remarks } = req.body;
@@ -703,11 +703,16 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Required fields missing: GroupID, LeaderID, HouseNumber, PersonCount.' });
       }
 
-      // Check that Leader is assigning correctly
+      // Check that Leader/Staff is active in system
       const employees = await getEmployees();
       const leader = employees.find(e => e.EmployeeID === LeaderID);
-      if (!leader || leader.Position !== 'Leader') {
-        return res.status(403).json({ success: false, message: 'Only Employee Leaders are authorized to submit records.' });
+      if (!leader) {
+        return res.status(404).json({ success: false, message: 'Designated staff/leader not found.' });
+      }
+
+      // Allow Leader, Co-Leader, or Admin positions
+      if (leader.Position !== 'Leader' && leader.Position !== 'Admin' && leader.Position !== 'Co-Leader') {
+        return res.status(403).json({ success: false, message: 'Only authorized Employee Leaders or Admins can record surveys.' });
       }
 
       // Fetch group rate
@@ -718,6 +723,41 @@ async function startServer() {
       }
 
       const records = await getRecords();
+      
+      // Check if survey already exists based on GroupID (Group Name) and is unpaid (not completed yet)
+      const existingIdx = records.findIndex(r => r.GroupID === GroupID && !r.IsPaid);
+      if (existingIdx !== -1) {
+        const existing = records[existingIdx];
+        const additionalCount = Number(PersonCount);
+        const newCount = existing.PersonCount + additionalCount;
+        
+        existing.PersonCount = newCount;
+        // Core payout: remain as what was set in record PayoutRate
+        existing.TotalPayout = newCount * existing.PayoutRate;
+        if (Remarks) {
+          existing.Remarks = existing.Remarks ? `${existing.Remarks}; ${Remarks}` : Remarks;
+        }
+
+        await saveRecords(records);
+
+        // Audit Log
+        await addLog(
+          creator,
+          `Admin/Staff updated survey record ${existing.RecordID} for group ${group.GroupName}: Added ${additionalCount} population. New total: ${newCount}, Computed Payout: PHP ${existing.TotalPayout}`
+        );
+
+        // Broadcast Notification
+        await addNotification(
+          creator,
+          'Survey Updated (Population Added)',
+          `Added ${additionalCount} population to existing survey ID: ${existing.RecordID} for ${group.GroupName} (New Total: ${newCount}, Payout: PHP ${existing.TotalPayout}).`,
+          'success'
+        );
+
+        return res.status(200).json({ success: true, record: existing });
+      }
+
+      // Generate a new Record ID
       const maxIdNum = records.reduce((max, r) => {
         const num = Array.isArray(r.RecordID.split('-')) ? parseInt(r.RecordID.split('-')[0].slice(3) || '0', 10) : parseInt(r.RecordID.slice(3) || '0', 10);
         return num > max ? num : max;
@@ -745,15 +785,15 @@ async function startServer() {
 
       // Audit Log
       await addLog(
-        leader.Username,
+        creator,
         `Submitted survey record ${RecordID}: Group ${group.GroupName}, House #${HouseNumber}, People Count ${count}, Payout PHP ${TotalPayout}`
       );
 
       // Broadcast Notification
       await addNotification(
-        leader.EmployeeID,
+        creator,
         'New Survey Submitted',
-        `Leader ${leader.FullName} recorded House #${HouseNumber} for ${group.GroupName} (${count} count, PHP ${TotalPayout} payout).`,
+        `Survey recorded House #${HouseNumber} for ${group.GroupName} (${count} count, PHP ${TotalPayout} payout).`,
         'success'
       );
 

@@ -62,15 +62,15 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] dark:bg-slate-950 px-4 transition-colors duration-300">
-      <div className="absolute top-4 left-4 flex items-center space-x-2 text-clinic-blue-600 no-print">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-700 to-lime-650 px-4 transition-colors duration-300">
+      <div className="absolute top-4 left-4 flex items-center space-x-2 text-white no-print">
         <img src="https://www.image2url.com/r2/default/images/1779782151932-e0fcc309-3ed7-4c15-a3fa-1859006492a3.png" alt="St. Francis Logo" className="h-6 w-6 object-contain" referrerPolicy="no-referrer" />
-        <span className="font-sans font-bold text-lg tracking-tight">SAINT FRANCIS CLINIC</span>
+        <span className="font-sans font-bold text-lg tracking-tight text-white dropdown-shadow-sm">SAINT FRANCIS CLINIC</span>
       </div>
 
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-8 transition-all relative overflow-hidden">
         {/* Decorative Top Accent */}
-        <div className="absolute top-0 left-0 right-0 h-[4px] bg-clinic-blue-600" />
+        <div className="absolute top-0 left-0 right-0 h-[5px] bg-gradient-to-r from-clinic-blue-600 via-clinic-blue-400 to-clinic-blue-800" />
 
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center p-2 bg-slate-50 dark:bg-slate-800 rounded-2xl mb-3 border border-slate-100 dark:border-slate-700 shadow-xs">
@@ -128,7 +128,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 type="submit"
                 id="btn-confirm-username"
                 disabled={loading || !username.trim()}
-                className="w-full py-3 px-4 bg-clinic-blue-600 hover:bg-clinic-blue-700 text-white font-semibold rounded-xl text-sm flex items-center justify-center space-x-2 transition-all shadow-md group disabled:opacity-50"
+                className="w-full py-3 px-4 bg-gradient-to-r from-clinic-blue-600 to-clinic-blue-800 hover:brightness-105 active:scale-[0.98] text-white font-semibold rounded-xl text-sm flex items-center justify-center space-x-2 transition-all shadow-md group disabled:opacity-50 cursor-pointer"
               >
                 {loading ? (
                   <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -206,7 +206,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 type="submit"
                 id="btn-login"
                 disabled={loading || pinCode.length < 1}
-                className="w-full py-3 px-4 bg-clinic-green-600 hover:bg-clinic-green-700 text-white font-semibold rounded-xl text-sm flex items-center justify-center space-x-2 transition-all shadow-md group disabled:opacity-50"
+                className="w-full py-3 px-4 bg-gradient-to-r from-clinic-blue-600 to-clinic-blue-800 hover:brightness-105 active:scale-[0.98] text-white font-semibold rounded-xl text-sm flex items-center justify-center space-x-2 transition-all shadow-md group disabled:opacity-50 cursor-pointer"
               >
                 {loading ? (
                   <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />

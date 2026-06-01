@@ -156,7 +156,7 @@ export default function AdminDashboard() {
           </div>
           <div className="mt-3">
             <h3 className="text-2xl font-extrabold font-heading text-slate-800 dark:text-slate-100">{summary.totalRecords}</h3>
-            <p className="text-[10px] text-slate-400 mt-1">Household submissions</p>
+            <p className="text-[10px] text-slate-400 mt-1">Recorded submissions</p>
           </div>
         </div>
 

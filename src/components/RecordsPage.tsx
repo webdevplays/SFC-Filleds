@@ -18,7 +18,8 @@ import {
   X,
   FileText,
   Coins,
-  CheckCircle
+  CheckCircle,
+  PlusCircle
 } from 'lucide-react';
 
 interface RecordsPageProps {
@@ -56,6 +57,48 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
   const [editPersonCount, setEditPersonCount] = useState<number>(1);
   const [editRemarks, setEditRemarks] = useState('');
   const [updating, setUpdating] = useState(false);
+
+  // Admin add survey states
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addSelectedGroupId, setAddSelectedGroupId] = useState('');
+  const [addPersonCount, setAddPersonCount] = useState<number>(1);
+  const [addRemarks, setAddRemarks] = useState('');
+  const [addingSurveyError, setAddingSurveyError] = useState<string | null>(null);
+  const [addingSurvey, setAddingSurvey] = useState(false);
+
+  // Submit new survey (Admins)
+  const handleAddSurvey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addSelectedGroupId) return;
+
+    const chosenGroup = groups.find(g => g.GroupID === addSelectedGroupId);
+    if (!chosenGroup) return;
+
+    setAddingSurvey(true);
+    setAddingSurveyError(null);
+    try {
+      const res = await api.createRecord({
+        GroupID: addSelectedGroupId,
+        LeaderID: chosenGroup.LeaderID, // Default Leader assigned to the group is the assigned staff
+        HouseNumber: 'Admin Survey',
+        PersonCount: addPersonCount,
+        Remarks: addRemarks.trim() || 'Admin added survey'
+      }, user.EmployeeID);
+
+      if (res.success) {
+        setIsAddModalOpen(false);
+        setAddSelectedGroupId('');
+        setAddPersonCount(1);
+        setAddRemarks('');
+        loadData();
+      }
+    } catch (err: any) {
+      console.error(err);
+      setAddingSurveyError(err.message || 'An error occurred while adding the survey.');
+    } finally {
+      setAddingSurvey(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -253,7 +296,18 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
   const getGroupName = (id: string) => {
     const g = groups.find(grp => grp.GroupID === id);
     return g ? `${g.GroupName} (${g.GroupCode})` : 'Unknown Group';
-  };  return (
+  };
+
+  const selectedGroupObj = groups.find(g => g.GroupID === addSelectedGroupId);
+  const currentRate = selectedGroupObj ? selectedGroupObj.PayoutRate : 0;
+  const computedPayout = currentRate * addPersonCount;
+  
+  const assignedStaffObj = selectedGroupObj 
+    ? employees.find(e => e.EmployeeID === selectedGroupObj.LeaderID)
+    : null;
+  const assignedStaffName = assignedStaffObj ? assignedStaffObj.FullName : 'No Leader Assigned';
+
+  return (
     <div className="space-y-6">
       {/* Top Notification Banner */}
       {paymentSuccessMsg && (
@@ -288,6 +342,23 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
 
         {/* Exports Panel */}
         <div className="flex gap-2.5">
+          {isAdmin && !isPaid && (
+            <button
+              onClick={() => {
+                setAddSelectedGroupId('');
+                setAddPersonCount(1);
+                setAddRemarks('');
+                setAddingSurveyError(null);
+                setIsAddModalOpen(true);
+              }}
+              className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:brightness-105 active:scale-[0.98] text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all shadow-md shadow-emerald-500/15 cursor-pointer no-print"
+              id="admin-btn-add-survey"
+            >
+              <PlusCircle className="h-4 w-4" />
+              <span>Add Survey</span>
+            </button>
+          )}
+
           <button
             onClick={handleExportCSV}
             className="px-3.5 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 border border-slate-150 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all shadow-sm cursor-pointer"
@@ -361,10 +432,10 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
           <Search className="absolute left-3.5 top-3 text-slate-400 h-4.5 w-4.5" />
           <input
             type="text"
-            placeholder={isPaid ? "Search paid record logs by group code, barangay name, or date..." : "Search active surveys by house count, group leader, or date (YYYY-MM-DD)..."}
+            placeholder={isPaid ? "Search paid record logs by group code, barangay name, or date..." : "Search active surveys by group leader, or date (YYYY-MM-DD)..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-2 bg-slate-50 dark:bg-slate-955 border border-slate-205 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
+            className="w-full pl-11 pr-4 py-2 bg-slate-50 dark:bg-slate-955 border border-slate-205 dark:border-slate-804 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-clinic-blue-500"
           />
         </div>
 
@@ -445,7 +516,6 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
                     <span className="print:hidden">Group/Barangay Name</span>
                     <span className="hidden print:inline-block">Group Name</span>
                   </th>
-                  <th className="px-6 py-4 text-center uppercase">House Count</th>
                   <th className="px-6 py-4 text-center uppercase">Population Count</th>
                   <th className="px-6 py-4 text-center uppercase">Current Rate</th>
                   <th className="px-6 py-4 text-right uppercase">Computed Payout</th>
@@ -469,7 +539,6 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-center font-mono font-bold text-slate-700 dark:text-slate-350">{rec.HouseNumber}</td>
                       <td className="px-6 py-4 text-center font-bold text-slate-805 dark:text-white">{rec.PersonCount} person(s)</td>
                       <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-455">₱{rec.PayoutRate}</td>
                       <td className="px-6 py-4 text-right font-black text-clinic-green-600">₱{rec.TotalPayout.toLocaleString()}</td>
@@ -557,19 +626,7 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
             {/* Form */}
             <form onSubmit={handleUpdateRecord} className="p-6 space-y-4">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">House Count *</label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={editHouseNo}
-                  onChange={(e) => setEditHouseNo(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Person Count *</label>
+                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Population Count *</label>
                 <input
                   type="number"
                   required
@@ -608,6 +665,135 @@ export default function RecordsPage({ user, isPaidView }: RecordsPageProps) {
                   ) : (
                     <>
                       <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Survey Modal for Admins */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center space-x-2">
+                <PlusCircle className="text-emerald-600 h-5 w-5" />
+                <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 font-heading uppercase tracking-wide">
+                  Record New Field Survey
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleAddSurvey} className="p-6 space-y-4">
+              {addingSurveyError && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-655 dark:text-red-450 border border-red-100 dark:border-red-900/50 rounded-xl text-xs flex items-center gap-2 font-semibold">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{addingSurveyError}</span>
+                </div>
+              )}
+
+              {/* Group Name Select */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Group Name *</label>
+                <select
+                  required
+                  value={addSelectedGroupId}
+                  onChange={(e) => setAddSelectedGroupId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-clinic-blue-500 focus:outline-none dark:text-slate-200"
+                >
+                  <option value="" disabled>-- Select Survey Group --</option>
+                  {groups.filter(g => g.Status === 'Active').map(g => (
+                    <option key={g.GroupID} value={g.GroupID}>
+                      {g.GroupName} ({g.GroupCode})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Population Count */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Population Count *</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={addPersonCount}
+                  onChange={(e) => setAddPersonCount(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-black dark:text-slate-200"
+                />
+              </div>
+
+              {/* Auto-fetched and displayed fields (Current Rate, Computed Payout, Assigned Staff) */}
+              <div className="bg-slate-50 dark:bg-slate-950/40 p-4 border border-slate-100 dark:border-slate-800/85 rounded-2xl space-y-2.5 text-xs">
+                <span className="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Group Details (Auto-fetched)</span>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-405 dark:text-slate-500">Assigned Staff:</span>
+                  <span className="font-bold text-slate-705 dark:text-slate-300">
+                    {addSelectedGroupId ? assignedStaffName : 'Select a group...'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-405 dark:text-slate-500">Current Rate:</span>
+                  <span className="font-bold text-slate-750 dark:text-slate-300 font-mono">
+                    {addSelectedGroupId ? `₱${currentRate} / person` : 'Select a group...'}
+                  </span>
+                </div>
+
+                <div className="h-px bg-slate-100 dark:bg-slate-800/50 my-1" />
+
+                <div className="flex justify-between items-center font-bold">
+                  <span className="text-slate-600 dark:text-slate-400">Computed Payout:</span>
+                  <span className="text-emerald-600 dark:text-emerald-450 font-extrabold text-sm font-mono">
+                    {addSelectedGroupId ? `₱${computedPayout.toLocaleString()}` : '₱0'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Optional Remarks */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Remarks</label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Additional batch, consolidated survey update"
+                  value={addRemarks}
+                  onChange={(e) => setAddRemarks(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-clinic-blue-500 focus:outline-none dark:text-slate-200"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="flex-1 py-2.5 px-4 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-850 text-slate-705 dark:text-slate-350 font-bold rounded-xl text-xs border border-slate-150 dark:border-slate-800 transition-colors focus:outline-none cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingSurvey || !addSelectedGroupId}
+                  className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:pointer-events-none text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-500/10 cursor-pointer"
+                >
+                  {addingSurvey ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  ) : (
+                    <>
+                      <PlusCircle className="h-4 w-4" />
+                      <span>Submit Survey</span>
                     </>
                   )}
                 </button>

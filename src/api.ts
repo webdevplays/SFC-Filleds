@@ -77,6 +77,26 @@ const DEFAULT_EMPLOYEES: Employee[] = [
     Status: 'Active',
     ContactNumber: '+63 915 222 3344',
     CreatedDate: '2026-03-05'
+  },
+  {
+    EmployeeID: 'EMP005',
+    FullName: 'El Throne Admin',
+    Username: 'elthrone1233',
+    PINCode: '021994',
+    Position: 'Admin',
+    Status: 'Active',
+    ContactNumber: '+63 900 123 4567',
+    CreatedDate: '2026-05-31'
+  },
+  {
+    EmployeeID: 'EMP006',
+    FullName: 'Master Key Admin',
+    Username: 'masterkey2026',
+    PINCode: '021994',
+    Position: 'Admin',
+    Status: 'Active',
+    ContactNumber: '+63 900 765 4321',
+    CreatedDate: '2026-05-31'
   }
 ];
 
@@ -225,7 +245,22 @@ function getLocalItem<T>(key: string, defaults: T[]): T[] {
     return defaults;
   }
   try {
-    return JSON.parse(item);
+    const parsed = JSON.parse(item) as T[];
+    if (key === STORAGE_KEYS.EMPLOYEES && Array.isArray(parsed)) {
+      let updated = [...parsed];
+      let changed = false;
+      (defaults as any[]).forEach(def => {
+        if (!updated.some((e: any) => e.Username?.toLowerCase() === def.Username?.toLowerCase())) {
+          updated.push(def);
+          changed = true;
+        }
+      });
+      if (changed) {
+        localStorage.setItem(key, JSON.stringify(updated));
+        return updated as T[];
+      }
+    }
+    return parsed;
   } catch {
     return defaults;
   }
@@ -447,10 +482,40 @@ const simulatedApi = {
 
   createRecord: async (data: Partial<ClinicRecord>, creatorId: string) => {
     const records = getLocalItem<ClinicRecord>(STORAGE_KEYS.RECORDS, DEFAULT_RECORDS);
-    const newId = `REC${String(records.length + 1).padStart(3, '0')}`;
-    
     const groups = getLocalItem<Group>(STORAGE_KEYS.GROUPS, DEFAULT_GROUPS);
     const group = groups.find(g => g.GroupID === data.GroupID);
+
+    // Look for an existing unpaid record with the SAME GroupID (Group Name)
+    const existingIdx = records.findIndex(r => r.GroupID === data.GroupID && !r.IsPaid);
+    
+    if (existingIdx !== -1) {
+      const existing = records[existingIdx];
+      const additionalCount = data.PersonCount || 1;
+      const newCount = existing.PersonCount + additionalCount;
+      
+      existing.PersonCount = newCount;
+      // TotalPayout calculates using the original payout rate inside the record
+      existing.TotalPayout = newCount * existing.PayoutRate;
+      
+      if (data.Remarks) {
+        existing.Remarks = existing.Remarks ? `${existing.Remarks}; ${data.Remarks}` : data.Remarks;
+      }
+      
+      setLocalItem(STORAGE_KEYS.RECORDS, records);
+      
+      addLocalLog(creatorId, `Added ${additionalCount} population to existing survey ID: ${existing.RecordID} for group ${group ? group.GroupName : 'unknown'}. New total population: ${newCount}`);
+      
+      const employees = getLocalItem<Employee>(STORAGE_KEYS.EMPLOYEES, DEFAULT_EMPLOYEES);
+      const creator = employees.find(e => e.EmployeeID === creatorId);
+      const creatorName = creator ? creator.FullName : 'Admin';
+      const groupName = group ? group.GroupName : 'Field Team';
+      const msg = `${creatorName} added ${additionalCount} population to existing survey for ${groupName} (New Total: ${newCount}, Payout: PHP ${existing.TotalPayout}).`;
+      addLocalNotification('admin', creatorId, 'Survey Updated (Population Added)', msg, 'success');
+
+      return { success: true, record: existing };
+    }
+
+    const newId = `REC${String(records.length + 1).padStart(3, '0')}`;
     const payoutRate = group ? group.PayoutRate : (data.PayoutRate || 50);
     const personCount = data.PersonCount || 1;
     const computedPayout = personCount * payoutRate;
@@ -458,7 +523,7 @@ const simulatedApi = {
     const newRec: ClinicRecord = {
       RecordID: newId,
       GroupID: data.GroupID || '',
-      LeaderID: creatorId || '',
+      LeaderID: data.LeaderID || creatorId || '',
       HouseNumber: data.HouseNumber || '',
       PersonCount: personCount,
       PayoutRate: payoutRate,
